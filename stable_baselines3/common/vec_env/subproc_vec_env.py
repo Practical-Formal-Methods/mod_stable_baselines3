@@ -2,10 +2,10 @@ import multiprocessing as mp
 from collections import OrderedDict
 from typing import Any, Callable, List, Optional, Sequence, Tuple, Type, Union
 
-import gym
+from mod_gym import gym
 import numpy as np
 
-from stable_baselines3.common.vec_env.base_vec_env import (
+from mod_stable_baselines3.stable_baselines3.common.vec_env.base_vec_env import (
     CloudpickleWrapper,
     VecEnv,
     VecEnvIndices,
@@ -18,7 +18,7 @@ def _worker(
     remote: mp.connection.Connection, parent_remote: mp.connection.Connection, env_fn_wrapper: CloudpickleWrapper
 ) -> None:
     # Import here to avoid a circular import
-    from stable_baselines3.common.env_util import is_wrapped
+    from mod_stable_baselines3.stable_baselines3.common.env_util import is_wrapped
 
     parent_remote.close()
     env = env_fn_wrapper.var()

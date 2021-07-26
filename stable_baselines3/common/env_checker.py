@@ -1,12 +1,12 @@
 import warnings
 from typing import Union
 
-import gym
+from mod_gym import gym
 import numpy as np
-from gym import spaces
+from mod_gym.gym import spaces
 
-from stable_baselines3.common.preprocessing import is_image_space_channels_first
-from stable_baselines3.common.vec_env import DummyVecEnv, VecCheckNan
+from mod_stable_baselines3.stable_baselines3.common.preprocessing import is_image_space_channels_first
+from mod_stable_baselines3.stable_baselines3.common.vec_env import DummyVecEnv, VecCheckNan
 
 
 def _is_numpy_array_space(space: spaces.Space) -> bool:

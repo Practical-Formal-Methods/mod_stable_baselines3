@@ -1,9 +1,9 @@
 from typing import Dict, Union
 
-import gym
+from mod_gym import gym
 import numpy as np
 
-from stable_baselines3.common.type_aliases import GymStepReturn
+from mod_stable_baselines3.stable_baselines3.common.type_aliases import GymStepReturn
 
 
 class SimpleMultiObsEnv(gym.Env):

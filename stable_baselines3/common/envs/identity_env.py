@@ -1,10 +1,10 @@
 from typing import Optional, Union
 
 import numpy as np
-from gym import Env, Space
-from gym.spaces import Box, Discrete, MultiBinary, MultiDiscrete
+from mod_gym.gym import Env, Space
+from mod_gym.gym.spaces import Box, Discrete, MultiBinary, MultiDiscrete
 
-from stable_baselines3.common.type_aliases import GymObs, GymStepReturn
+from mod_stable_baselines3.stable_baselines3.common.type_aliases import GymObs, GymStepReturn
 
 
 class IdentityEnv(Env):

@@ -2,10 +2,10 @@ from collections import OrderedDict
 from typing import Any, Dict, Optional, Union
 
 import numpy as np
-from gym import GoalEnv, spaces
-from gym.envs.registration import EnvSpec
+from mod_gym.gym import GoalEnv, spaces
+from mod_gym.gym.envs.registration import EnvSpec
 
-from stable_baselines3.common.type_aliases import GymStepReturn
+from mod_stable_baselines3.stable_baselines3.common.type_aliases import GymStepReturn
 
 
 class BitFlippingEnv(GoalEnv):

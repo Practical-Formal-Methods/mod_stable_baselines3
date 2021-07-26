@@ -2,12 +2,12 @@ from typing import Any, Dict, Optional, Tuple, Type, Union
 
 import torch as th
 
-from stable_baselines3.common.buffers import ReplayBuffer
-from stable_baselines3.common.noise import ActionNoise
-from stable_baselines3.common.off_policy_algorithm import OffPolicyAlgorithm
-from stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedule
-from stable_baselines3.td3.policies import TD3Policy
-from stable_baselines3.td3.td3 import TD3
+from mod_stable_baselines3.stable_baselines3.common.buffers import ReplayBuffer
+from mod_stable_baselines3.stable_baselines3.common.noise import ActionNoise
+from mod_stable_baselines3.stable_baselines3.common.off_policy_algorithm import OffPolicyAlgorithm
+from mod_stable_baselines3.stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedule
+from mod_stable_baselines3.stable_baselines3.td3.policies import TD3Policy
+from mod_stable_baselines3.stable_baselines3.td3.td3 import TD3
 
 
 class DDPG(TD3):

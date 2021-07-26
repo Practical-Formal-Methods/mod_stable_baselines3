@@ -3,13 +3,13 @@ from typing import Any, Dict, Optional, Type, Union
 
 import numpy as np
 import torch as th
-from gym import spaces
+from mod_gym.gym import spaces
 from torch.nn import functional as F
 
-from stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
-from stable_baselines3.common.policies import ActorCriticPolicy
-from stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedule
-from stable_baselines3.common.utils import explained_variance, get_schedule_fn
+from mod_stable_baselines3.stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
+from mod_stable_baselines3.stable_baselines3.common.policies import ActorCriticPolicy
+from mod_stable_baselines3.stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedule
+from mod_stable_baselines3.stable_baselines3.common.utils import explained_variance, get_schedule_fn
 
 
 class PPO(OnPolicyAlgorithm):

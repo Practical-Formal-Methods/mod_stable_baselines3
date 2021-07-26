@@ -1,13 +1,13 @@
 from itertools import zip_longest
 from typing import Dict, List, Tuple, Type, Union
 
-import gym
+from mod_gym import gym
 import torch as th
 from torch import nn
 
-from stable_baselines3.common.preprocessing import get_flattened_obs_dim, is_image_space
-from stable_baselines3.common.type_aliases import TensorDict
-from stable_baselines3.common.utils import get_device
+from mod_stable_baselines3.stable_baselines3.common.preprocessing import get_flattened_obs_dim, is_image_space
+from mod_stable_baselines3.stable_baselines3.common.type_aliases import TensorDict
+from mod_stable_baselines3.stable_baselines3.common.utils import get_device
 
 
 class BaseFeaturesExtractor(nn.Module):

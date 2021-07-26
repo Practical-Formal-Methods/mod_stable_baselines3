@@ -1,6 +1,6 @@
 # This file is here just to define MlpPolicy/CnnPolicy
 # that work for A2C
-from stable_baselines3.common.policies import (
+from mod_stable_baselines3.stable_baselines3.common.policies import (
     ActorCriticCnnPolicy,
     ActorCriticPolicy,
     MultiInputActorCriticPolicy,

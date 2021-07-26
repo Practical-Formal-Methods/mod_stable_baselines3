@@ -1,6 +1,6 @@
-import gym
+from mod_gym import gym
 import numpy as np
-from gym import spaces
+from mod_gym.gym import spaces
 
 try:
     import cv2  # pytype:disable=import-error
@@ -9,7 +9,7 @@ try:
 except ImportError:
     cv2 = None
 
-from stable_baselines3.common.type_aliases import GymObs, GymStepReturn
+from mod_stable_baselines3.stable_baselines3.common.type_aliases import GymObs, GymStepReturn
 
 
 class NoopResetEnv(gym.Wrapper):

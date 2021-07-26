@@ -3,13 +3,13 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-import gym
+from mod_gym import gym
 import torch as th
-from gym import spaces
+from mod_gym.gym import spaces
 from torch import nn
 from torch.distributions import Bernoulli, Categorical, Normal
 
-from stable_baselines3.common.preprocessing import get_action_dim
+from mod_stable_baselines3.stable_baselines3.common.preprocessing import get_action_dim
 
 
 class Distribution(ABC):

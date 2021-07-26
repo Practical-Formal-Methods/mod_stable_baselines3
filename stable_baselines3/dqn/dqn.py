@@ -1,16 +1,16 @@
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
-import gym
+from mod_gym import gym
 import numpy as np
 import torch as th
 from torch.nn import functional as F
 
-from stable_baselines3.common.buffers import ReplayBuffer
-from stable_baselines3.common.off_policy_algorithm import OffPolicyAlgorithm
-from stable_baselines3.common.preprocessing import maybe_transpose
-from stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedule
-from stable_baselines3.common.utils import get_linear_fn, is_vectorized_observation, polyak_update
-from stable_baselines3.dqn.policies import DQNPolicy
+from mod_stable_baselines3.stable_baselines3.common.buffers import ReplayBuffer
+from mod_stable_baselines3.stable_baselines3.common.off_policy_algorithm import OffPolicyAlgorithm
+from mod_stable_baselines3.stable_baselines3.common.preprocessing import maybe_transpose
+from mod_stable_baselines3.stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedule
+from mod_stable_baselines3.stable_baselines3.common.utils import get_linear_fn, is_vectorized_observation, polyak_update
+from mod_stable_baselines3.stable_baselines3.dqn.policies import DQNPolicy
 
 
 class DQN(OffPolicyAlgorithm):

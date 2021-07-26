@@ -1,11 +1,11 @@
 import warnings
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
-import gym
+from mod_gym import gym
 import numpy as np
 
-from stable_baselines3.common import base_class
-from stable_baselines3.common.vec_env import DummyVecEnv, VecEnv, VecMonitor, is_vecenv_wrapped
+from mod_stable_baselines3.stable_baselines3.common import base_class
+from mod_stable_baselines3.stable_baselines3.common.vec_env import DummyVecEnv, VecEnv, VecMonitor, is_vecenv_wrapped
 
 
 def evaluate_policy(
@@ -54,7 +54,7 @@ def evaluate_policy(
     """
     is_monitor_wrapped = False
     # Avoid circular import
-    from stable_baselines3.common.monitor import Monitor
+    from mod_stable_baselines3.stable_baselines3.common.monitor import Monitor
 
     if not isinstance(env, VecEnv):
         env = DummyVecEnv([lambda: env])

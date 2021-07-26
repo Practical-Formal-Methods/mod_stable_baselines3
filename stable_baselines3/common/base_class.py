@@ -7,28 +7,28 @@ from abc import ABC, abstractmethod
 from collections import deque
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Type, Union
 
-import gym
+from mod_gym import gym
 import numpy as np
 import torch as th
 
-from stable_baselines3.common import utils
-from stable_baselines3.common.callbacks import BaseCallback, CallbackList, ConvertCallback, EvalCallback
-from stable_baselines3.common.env_util import is_wrapped
-from stable_baselines3.common.logger import Logger
-from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.noise import ActionNoise
-from stable_baselines3.common.policies import BasePolicy, get_policy_from_name
-from stable_baselines3.common.preprocessing import check_for_nested_spaces, is_image_space, is_image_space_channels_first
-from stable_baselines3.common.save_util import load_from_zip_file, recursive_getattr, recursive_setattr, save_to_zip_file
-from stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedule
-from stable_baselines3.common.utils import (
+from mod_stable_baselines3.stable_baselines3.common import utils
+from mod_stable_baselines3.stable_baselines3.common.callbacks import BaseCallback, CallbackList, ConvertCallback, EvalCallback
+from mod_stable_baselines3.stable_baselines3.common.env_util import is_wrapped
+from mod_stable_baselines3.stable_baselines3.common.logger import Logger
+from mod_stable_baselines3.stable_baselines3.common.monitor import Monitor
+from mod_stable_baselines3.stable_baselines3.common.noise import ActionNoise
+from mod_stable_baselines3.stable_baselines3.common.policies import BasePolicy, get_policy_from_name
+from mod_stable_baselines3.stable_baselines3.common.preprocessing import check_for_nested_spaces, is_image_space, is_image_space_channels_first
+from mod_stable_baselines3.stable_baselines3.common.save_util import load_from_zip_file, recursive_getattr, recursive_setattr, save_to_zip_file
+from mod_stable_baselines3.stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedule
+from mod_stable_baselines3.stable_baselines3.common.utils import (
     check_for_correct_spaces,
     get_device,
     get_schedule_fn,
     set_random_seed,
     update_learning_rate,
 )
-from stable_baselines3.common.vec_env import (
+from mod_stable_baselines3.stable_baselines3.common.vec_env import (
     DummyVecEnv,
     VecEnv,
     VecNormalize,

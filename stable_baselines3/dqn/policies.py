@@ -1,18 +1,18 @@
 from typing import Any, Dict, List, Optional, Type
 
-import gym
+from mod_gym import gym
 import torch as th
 from torch import nn
 
-from stable_baselines3.common.policies import BasePolicy, register_policy
-from stable_baselines3.common.torch_layers import (
+from mod_stable_baselines3.stable_baselines3.common.policies import BasePolicy, register_policy
+from mod_stable_baselines3.stable_baselines3.common.torch_layers import (
     BaseFeaturesExtractor,
     CombinedExtractor,
     FlattenExtractor,
     NatureCNN,
     create_mlp,
 )
-from stable_baselines3.common.type_aliases import Schedule
+from mod_stable_baselines3.stable_baselines3.common.type_aliases import Schedule
 
 
 class QNetwork(BasePolicy):

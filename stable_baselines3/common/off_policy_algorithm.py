@@ -4,20 +4,20 @@ import time
 import warnings
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
-import gym
+from mod_gym import gym
 import numpy as np
 import torch as th
 
-from stable_baselines3.common.base_class import BaseAlgorithm
-from stable_baselines3.common.buffers import DictReplayBuffer, ReplayBuffer
-from stable_baselines3.common.callbacks import BaseCallback
-from stable_baselines3.common.noise import ActionNoise
-from stable_baselines3.common.policies import BasePolicy
-from stable_baselines3.common.save_util import load_from_pkl, save_to_pkl
-from stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, RolloutReturn, Schedule, TrainFreq, TrainFrequencyUnit
-from stable_baselines3.common.utils import safe_mean, should_collect_more_steps
-from stable_baselines3.common.vec_env import VecEnv
-from stable_baselines3.her.her_replay_buffer import HerReplayBuffer
+from mod_stable_baselines3.stable_baselines3.common.base_class import BaseAlgorithm
+from mod_stable_baselines3.stable_baselines3.common.buffers import DictReplayBuffer, ReplayBuffer
+from mod_stable_baselines3.stable_baselines3.common.callbacks import BaseCallback
+from mod_stable_baselines3.stable_baselines3.common.noise import ActionNoise
+from mod_stable_baselines3.stable_baselines3.common.policies import BasePolicy
+from mod_stable_baselines3.stable_baselines3.common.save_util import load_from_pkl, save_to_pkl
+from mod_stable_baselines3.stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, RolloutReturn, Schedule, TrainFreq, TrainFrequencyUnit
+from mod_stable_baselines3.stable_baselines3.common.utils import safe_mean, should_collect_more_steps
+from mod_stable_baselines3.stable_baselines3.common.vec_env import VecEnv
+from mod_stable_baselines3.stable_baselines3.her.her_replay_buffer import HerReplayBuffer
 
 
 class OffPolicyAlgorithm(BaseAlgorithm):

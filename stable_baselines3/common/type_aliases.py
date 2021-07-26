@@ -3,11 +3,11 @@
 from enum import Enum
 from typing import Any, Callable, Dict, List, NamedTuple, Tuple, Union
 
-import gym
+from mod_gym import gym
 import numpy as np
 import torch as th
 
-from stable_baselines3.common import callbacks, vec_env
+from mod_stable_baselines3.stable_baselines3.common import callbacks, vec_env
 
 GymEnv = Union[gym.Env, vec_env.VecEnv]
 GymObs = Union[Tuple, Dict[str, Any], np.ndarray, int]

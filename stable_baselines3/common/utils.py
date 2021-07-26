@@ -5,7 +5,7 @@ from collections import deque
 from itertools import zip_longest
 from typing import Dict, Iterable, Optional, Union
 
-import gym
+from mod_gym import gym
 import numpy as np
 import torch as th
 
@@ -15,8 +15,8 @@ try:
 except ImportError:
     SummaryWriter = None
 
-from stable_baselines3.common.logger import Logger, configure
-from stable_baselines3.common.type_aliases import GymEnv, Schedule, TensorDict, TrainFreq, TrainFrequencyUnit
+from mod_stable_baselines3.stable_baselines3.common.logger import Logger, configure
+from mod_stable_baselines3.stable_baselines3.common.type_aliases import GymEnv, Schedule, TensorDict, TrainFreq, TrainFrequencyUnit
 
 
 def set_random_seed(seed: int, using_cuda: bool = False) -> None:

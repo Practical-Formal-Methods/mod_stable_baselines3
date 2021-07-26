@@ -6,12 +6,12 @@ from abc import ABC, abstractmethod
 from functools import partial
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
-import gym
+from mod_gym import gym
 import numpy as np
 import torch as th
 from torch import nn
 
-from stable_baselines3.common.distributions import (
+from mod_stable_baselines3.stable_baselines3.common.distributions import (
     BernoulliDistribution,
     CategoricalDistribution,
     DiagGaussianDistribution,
@@ -20,8 +20,8 @@ from stable_baselines3.common.distributions import (
     StateDependentNoiseDistribution,
     make_proba_distribution,
 )
-from stable_baselines3.common.preprocessing import get_action_dim, is_image_space, maybe_transpose, preprocess_obs
-from stable_baselines3.common.torch_layers import (
+from mod_stable_baselines3.stable_baselines3.common.preprocessing import get_action_dim, is_image_space, maybe_transpose, preprocess_obs
+from mod_stable_baselines3.stable_baselines3.common.torch_layers import (
     BaseFeaturesExtractor,
     CombinedExtractor,
     FlattenExtractor,
@@ -29,8 +29,8 @@ from stable_baselines3.common.torch_layers import (
     NatureCNN,
     create_mlp,
 )
-from stable_baselines3.common.type_aliases import Schedule
-from stable_baselines3.common.utils import get_device, is_vectorized_observation, obs_as_tensor
+from mod_stable_baselines3.stable_baselines3.common.type_aliases import Schedule
+from mod_stable_baselines3.stable_baselines3.common.utils import get_device, is_vectorized_observation, obs_as_tensor
 
 
 class BaseModel(nn.Module, ABC):

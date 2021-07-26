@@ -3,12 +3,12 @@ import warnings
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, List, Optional, Union
 
-import gym
+import mod_gym
 import numpy as np
 
-from stable_baselines3.common import base_class  # pytype: disable=pyi-error
-from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3.common.vec_env import DummyVecEnv, VecEnv, sync_envs_normalization
+from mod_stable_baselines3.stable_baselines3.common import base_class  # pytype: disable=pyi-error
+from mod_stable_baselines3.stable_baselines3.common.evaluation import evaluate_policy
+from mod_stable_baselines3.stable_baselines3.common.vec_env import DummyVecEnv, VecEnv, sync_envs_normalization
 
 
 class BaseCallback(ABC):
@@ -294,7 +294,7 @@ class EvalCallback(EventCallback):
 
     def __init__(
         self,
-        eval_env: Union[gym.Env, VecEnv],
+        eval_env: Union[mod_gym.gym.Env, VecEnv],
         callback_on_new_best: Optional[BaseCallback] = None,
         n_eval_episodes: int = 5,
         eval_freq: int = 10000,

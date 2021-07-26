@@ -7,11 +7,11 @@ import time
 from glob import glob
 from typing import Dict, List, Optional, Tuple, Union
 
-import gym
+from mod_gym import gym
 import numpy as np
 import pandas
 
-from stable_baselines3.common.type_aliases import GymObs, GymStepReturn
+from mod_stable_baselines3.stable_baselines3.common.type_aliases import GymObs, GymStepReturn
 
 
 class Monitor(gym.Wrapper):

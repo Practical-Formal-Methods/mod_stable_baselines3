@@ -2,12 +2,12 @@ import pickle
 from copy import deepcopy
 from typing import Any, Dict, Union
 
-import gym
+from mod_gym import gym
 import numpy as np
 
-from stable_baselines3.common import utils
-from stable_baselines3.common.running_mean_std import RunningMeanStd
-from stable_baselines3.common.vec_env.base_vec_env import VecEnv, VecEnvStepReturn, VecEnvWrapper
+from mod_stable_baselines3.stable_baselines3.common import utils
+from mod_stable_baselines3.stable_baselines3.common.running_mean_std import RunningMeanStd
+from mod_stable_baselines3.stable_baselines3.common.vec_env.base_vec_env import VecEnv, VecEnvStepReturn, VecEnvWrapper
 
 
 class VecNormalize(VecEnvWrapper):

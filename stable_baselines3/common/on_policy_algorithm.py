@@ -1,17 +1,17 @@
 import time
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
-import gym
+from mod_gym import gym
 import numpy as np
 import torch as th
 
-from stable_baselines3.common.base_class import BaseAlgorithm
-from stable_baselines3.common.buffers import DictRolloutBuffer, RolloutBuffer
-from stable_baselines3.common.callbacks import BaseCallback
-from stable_baselines3.common.policies import ActorCriticPolicy, BasePolicy
-from stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedule
-from stable_baselines3.common.utils import obs_as_tensor, safe_mean
-from stable_baselines3.common.vec_env import VecEnv
+from mod_stable_baselines3.stable_baselines3.common.base_class import BaseAlgorithm
+from mod_stable_baselines3.stable_baselines3.common.buffers import DictRolloutBuffer, RolloutBuffer
+from mod_stable_baselines3.stable_baselines3.common.callbacks import BaseCallback
+from mod_stable_baselines3.stable_baselines3.common.policies import ActorCriticPolicy, BasePolicy
+from mod_stable_baselines3.stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedule
+from mod_stable_baselines3.stable_baselines3.common.utils import obs_as_tensor, safe_mean
+from mod_stable_baselines3.stable_baselines3.common.vec_env import VecEnv
 
 
 class OnPolicyAlgorithm(BaseAlgorithm):
