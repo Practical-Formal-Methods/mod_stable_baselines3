@@ -1,7 +1,7 @@
 from typing import Any, Dict, Optional, Type, Union
 
 import torch as th
-from gym import spaces
+from mod_gym.gym import spaces
 from torch.nn import functional as F
 
 from mod_stable_baselines3.stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
