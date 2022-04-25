@@ -231,6 +231,10 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
         while self.num_timesteps < total_timesteps:
 
+            if self.guided_train and self.num_timesteps == 2048:
+                self.explore()
+                self.test()
+            
             continue_training = self.collect_rollouts(self.env, callback, self.rollout_buffer, n_rollout_steps=self.n_steps)
 
             if continue_training is False:
@@ -261,3 +265,65 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         state_dicts = ["policy", "policy.optimizer"]
 
         return state_dicts, []
+
+    def explore(self):
+        from lunar import Fuzzer, EnvWrapper
+
+        game = EnvWrapper.Wrapper("lunar")
+        game.env = self.env
+        game.model = self.policy
+        game.action_space = range(self.env.action_space.n)
+
+        rand_seed = self.seed  # separate rng created in Fuzzer
+        fuzz_type = 'inc'
+        fuzz_game = game
+        inf_prob  = 0.1
+        coverage  = 'raw'
+        coverage_thold = 0.6
+        fuzz_mut_bdgt  = 25
+
+        fuzzer = Fuzzer.Fuzzer(rand_seed=rand_seed, fuzz_type=fuzz_type, fuzz_game=fuzz_game, inf_prob=inf_prob, coverage=coverage, coverage_thold=coverage_thold, mut_budget=fuzz_mut_bdgt)
+
+        self.fuzzer = fuzzer
+        self.fuzzer.fuzz()
+        print("Pool size: %d" % len(self.fuzzer.pool))
+
+
+    def test(self):
+        from lunar import Mutator, EnvWrapper
+        game = EnvWrapper.Wrapper("lunar")
+        game.env = self.env
+        game.model = self.policy
+
+        mutator = Mutator.LunarOracleMoonHeightMutator(game)
+        rng = np.random.default_rng(self.seed)
+
+        confirmation_budget = 30
+
+        test_budget = self.test_budget
+        self.env.guided_states.clear()
+        self.env.rng = np.random.default_rng(self.seed)
+
+        while test_budget > 0:
+            org_state = rng.choice(self.fuzzer.pool)
+            org_state = org_state.hi_lvl_state
+            rlx_state = mutator.mutate(org_state, rng, 'relax')
+
+            o_org, o_rlx = 0, 0
+            
+            # dummy_vec_env reset is modified
+            org_llvl_state = self.env.reset(org_state)
+            for _ in range(confirmation_budget):
+                o_org += game.rollout(org_llvl_state)
+
+            # dummy_vec_env reset is modified
+            rlx_llvl_state = self.env.reset(rlx_state)
+            for _ in range(confirmation_budget):
+                o_rlx += game.rollout(rlx_llvl_state)
+
+            if o_org > o_rlx:
+                # guided states declared in DummyVecEnv class where step (step_wait) is implemented
+                self.env.guided_states.append((org_state, rlx_state))
+
+            test_budget -= 1
+        

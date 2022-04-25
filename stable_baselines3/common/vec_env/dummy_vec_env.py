@@ -34,6 +34,9 @@ class DummyVecEnv(VecEnv):
         self.buf_infos = [{} for _ in range(self.num_envs)]
         self.actions = None
         self.metadata = env.metadata
+        self.guided_states = list()  # filled in on_policy_algorithm.py
+        self.next_guide = 'org'
+        self.rng = None  # initialized in on_policy_algorithm.py
 
     def step_async(self, actions: np.ndarray) -> None:
         self.actions = actions
@@ -46,7 +49,18 @@ class DummyVecEnv(VecEnv):
             if self.buf_dones[env_idx]:
                 # save final observation where user can get it, then reset
                 self.buf_infos[env_idx]["terminal_observation"] = obs
-                obs = self.envs[env_idx].reset()
+                
+                if self.guided_states and self.rng.random() < 0.5:
+                    org_state, rlx_state = self.rng.choice(self.guided_states)
+                    if self.next_guide == 'org':
+                        obs = self.envs[env_idx].reset(org_state)
+                        self.next_guide = 'rlx'
+                    else:
+                        obs = self.envs[env_idx].reset(rlx_state)
+                        self.next_guide = 'org'
+                else:
+                    obs = self.envs[env_idx].reset()
+
             self._save_obs(env_idx, obs)
         return (self._obs_from_buf(), np.copy(self.buf_rews), np.copy(self.buf_dones), deepcopy(self.buf_infos))
 
@@ -56,11 +70,19 @@ class DummyVecEnv(VecEnv):
             seeds.append(env.seed(seed + idx))
         return seeds
 
-    def reset(self) -> VecEnvObs:
+    # works with mod_gym lunar and bipedal envs
+    def reset(self, state=None) -> VecEnvObs:
         for env_idx in range(self.num_envs):
-            obs = self.envs[env_idx].reset()
+            obs = self.envs[env_idx].reset(state)
             self._save_obs(env_idx, obs)
         return self._obs_from_buf()
+
+    def get_state(self):
+        # should be fine for now as there is only one env in vecenv
+        for env_idx in range(self.num_envs):
+            nn_state, hi_lvl_state = self.envs[env_idx].get_state()
+
+        return nn_state, hi_lvl_state
 
     def close(self) -> None:
         for env in self.envs:

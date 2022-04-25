@@ -5,6 +5,7 @@ from mod_stable_baselines3.stable_baselines3.ddpg import DDPG
 from mod_stable_baselines3.stable_baselines3.dqn import DQN
 from mod_stable_baselines3.stable_baselines3.her.her_replay_buffer import HerReplayBuffer
 from mod_stable_baselines3.stable_baselines3.ppo import PPO
+from mod_stable_baselines3.stable_baselines3.ppo import MyPPO
 from mod_stable_baselines3.stable_baselines3.sac import SAC
 from mod_stable_baselines3.stable_baselines3.td3 import TD3
 
