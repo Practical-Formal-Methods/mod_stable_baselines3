@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Dict, Union
+from typing import Dict, Optional, Union
 
 import numpy as np
 from mod_gym.gym import spaces
@@ -91,11 +91,11 @@ class VecTransposeImage(VecEnvWrapper):
 
         return self.transpose_observations(observations), rewards, dones, infos
 
-    def reset(self) -> Union[np.ndarray, Dict]:
+    def reset(self, state: Optional[list] = None) -> Union[np.ndarray, Dict]:
         """
         Reset all environments
         """
-        return self.transpose_observations(self.venv.reset())
+        return self.transpose_observations(self.venv.reset(state))
 
     def close(self) -> None:
         self.venv.close()

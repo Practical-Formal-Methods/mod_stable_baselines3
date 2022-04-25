@@ -1,4 +1,5 @@
 import warnings
+from typing import Optional
 
 import numpy as np
 
@@ -39,8 +40,8 @@ class VecCheckNan(VecEnvWrapper):
         self._observations = observations
         return observations, rewards, news, infos
 
-    def reset(self) -> VecEnvObs:
-        observations = self.venv.reset()
+    def reset(self, state: Optional[list] = None) -> VecEnvObs:
+        observations = self.venv.reset(state)
         self._actions = None
 
         self._check_val(async_step=False, observations=observations)

@@ -66,8 +66,8 @@ class VecMonitor(VecEnvWrapper):
             self.results_writer = None
         self.info_keywords = info_keywords
 
-    def reset(self) -> VecEnvObs:
-        obs = self.venv.reset()
+    def reset(self, state: Optional[int] = None) -> VecEnvObs:
+        obs = self.venv.reset(state)
         self.episode_returns = np.zeros(self.num_envs, dtype=np.float32)
         self.episode_lengths = np.zeros(self.num_envs, dtype=np.int32)
         return obs

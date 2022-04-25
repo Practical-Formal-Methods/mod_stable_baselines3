@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 
 from mod_stable_baselines3.stable_baselines3.common.vec_env.base_vec_env import VecEnv, VecEnvStepReturn, VecEnvWrapper
@@ -15,8 +17,8 @@ class VecExtractDictObs(VecEnvWrapper):
         self.key = key
         super().__init__(venv=venv, observation_space=venv.observation_space.spaces[self.key])
 
-    def reset(self) -> np.ndarray:
-        obs = self.venv.reset()
+    def reset(self, state: Optional[list] = None) -> np.ndarray:
+        obs = self.venv.reset(state)
         return obs[self.key]
 
     def step_wait(self) -> VecEnvStepReturn:

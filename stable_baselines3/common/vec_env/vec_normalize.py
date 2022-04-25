@@ -1,6 +1,6 @@
 import pickle
 from copy import deepcopy
-from typing import Any, Dict, Union
+from typing import Any, Dict, Union, Optional
 
 from mod_gym import gym
 import numpy as np
@@ -213,12 +213,12 @@ class VecNormalize(VecEnvWrapper):
         """
         return self.old_reward.copy()
 
-    def reset(self) -> Union[np.ndarray, Dict[str, np.ndarray]]:
+    def reset(self, state: Optional[int] = None) -> Union[np.ndarray, Dict[str, np.ndarray]]:
         """
         Reset all environments
         :return: first observation of the episode
         """
-        obs = self.venv.reset()
+        obs = self.venv.reset(state)
         self.old_obs = obs
         self.ret = np.zeros(self.num_envs)
         if self.training:

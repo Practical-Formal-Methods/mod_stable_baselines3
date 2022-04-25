@@ -1,5 +1,5 @@
 import os
-from typing import Callable
+from typing import Callable, Optional
 
 from mod_gym.gym.wrappers.monitoring import video_recorder
 
@@ -63,8 +63,8 @@ class VecVideoRecorder(VecEnvWrapper):
         self.recording = False
         self.recorded_frames = 0
 
-    def reset(self) -> VecEnvObs:
-        obs = self.venv.reset()
+    def reset(self, state: Optional[list] = None) -> VecEnvObs:
+        obs = self.venv.reset(state)
         self.start_video_recorder()
         return obs
 
