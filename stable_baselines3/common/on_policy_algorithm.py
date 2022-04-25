@@ -231,7 +231,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
         while self.num_timesteps < total_timesteps:
 
-            if self.guided_train and self.num_timesteps == 2048:
+            if self.guided_train and self.num_timesteps == self.guide_point:
                 self.explore()
                 self.test()
             
