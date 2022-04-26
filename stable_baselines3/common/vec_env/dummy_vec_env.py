@@ -50,7 +50,7 @@ class DummyVecEnv(VecEnv):
                 # save final observation where user can get it, then reset
                 self.buf_infos[env_idx]["terminal_observation"] = obs
                 
-                if self.guided_states and self.rng.random() < 0.5:
+                if self.guided_states and self.rng.random() < 0.1:
                     org_state, rlx_state = self.rng.choice(self.guided_states)
                     if self.next_guide == 'org':
                         obs = self.envs[env_idx].reset(org_state)
