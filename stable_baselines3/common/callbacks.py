@@ -23,7 +23,7 @@ class BaseCallback(ABC):
         # The RL model
         self.model = None  # type: Optional[base_class.BaseAlgorithm]
         # An alias for self.model.get_env(), the environment used for training
-        self.training_env = None  # type: Union[gym.Env, VecEnv, None]
+        self.training_env = None  # type: Union[mod_gym.Env, VecEnv, None]
         # Number of time the callback was called
         self.n_calls = 0  # type: int
         # n_envs * n times env.step() was called

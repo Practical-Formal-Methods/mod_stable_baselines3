@@ -76,7 +76,7 @@ class Monitor(gym.Wrapper):
             if value is None:
                 raise ValueError(f"Expected you to pass keyword argument {key} into reset")
             self.current_reset_info[key] = value
-        return self.env.reset(**kwargs)
+        return self.env.reset(state, **kwargs)
 
     def step(self, action: Union[np.ndarray, int]) -> GymStepReturn:
         """
