@@ -1,4 +1,5 @@
 import time
+import pickle
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 from mod_gym import gym
@@ -227,9 +228,6 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             total_timesteps, eval_env, callback, eval_freq, n_eval_episodes, eval_log_path, reset_num_timesteps, tb_log_name
         )
 
-        self.explore()
-        exit()
-
         callback.on_training_start(locals(), globals())
 
         while self.num_timesteps < total_timesteps:
@@ -282,18 +280,20 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         fuzz_game = game
         inf_prob  = 0.2
         coverage  = 'raw'
-        coverage_thold = 0.5
+        coverage_thold = 0.4
         fuzz_mut_bdgt  = 25
 
         fuzzer = Fuzzer.Fuzzer(rand_seed=rand_seed, fuzz_type=fuzz_type, fuzz_game=fuzz_game, inf_prob=inf_prob, coverage=coverage, coverage_thold=coverage_thold, mut_budget=fuzz_mut_bdgt)
+        
+        pool = pickle.load("fuzzer_pool_5m_guide_train.p")
+        fuzer.pool = pool
 
         self.fuzzer = fuzzer
-        self.fuzzer.fuzz()
-        print("Pool size: %d" % len(self.fuzzer.pool))
+        #self.fuzzer.fuzz()
+        #print("Pool size: %d" % len(self.fuzzer.pool))
 
-        fuzzer_summary = open("fuzzer_pool_8h_guide_train.p", "wb")
-        import pickle
-        pickle.dump(self.fuzzer.pool, fuzzer_summary)
+        #fuzzer_summary = open("fuzzer_pool_1h_guide_train.p", "wb")
+        #pickle.dump(self.fuzzer.pool, fuzzer_summary)
 
     def test(self):
         from lunar import Mutator, EnvWrapper
