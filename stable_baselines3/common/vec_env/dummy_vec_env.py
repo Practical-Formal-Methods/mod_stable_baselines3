@@ -35,8 +35,10 @@ class DummyVecEnv(VecEnv):
         self.actions = None
         self.metadata = env.metadata
         self.guided_states = list()  # filled in on_policy_algorithm.py
-        self.next_guide = 'org'
+        # self.next_guide = 'rlx'
         self.rng = None  # initialized in on_policy_algorithm.py
+        self.g_o = False
+        self.r_o = False
 
     def step_async(self, actions: np.ndarray) -> None:
         self.actions = actions
@@ -52,14 +54,22 @@ class DummyVecEnv(VecEnv):
                 
                 if self.guided_states and self.rng.random() < 0.1:
                     org_state, rlx_state = self.rng.choice(self.guided_states)
-                    if self.next_guide == 'org':
-                        obs = self.envs[env_idx].reset(org_state)
-                        self.next_guide = 'rlx'
-                    else:
-                        obs = self.envs[env_idx].reset(rlx_state)
-                        self.next_guide = 'org'
+                    obs = self.envs[env_idx].reset(rlx_state)
+                    if not self.g_o:
+                        print(obs)
+                        self.g_o = True
+                    # if self.next_guide == 'org':
+                    #     obs = self.envs[env_idx].reset(org_state)
+                    #     self.next_guide = 'rlx'
+                    # else:
+                    #     obs = self.envs[env_idx].reset(rlx_state)
+                    #     self.next_guide = 'org'
                 else:
                     obs = self.envs[env_idx].reset()
+                    if not self.r_o:
+                        print(obs)
+                        self.r_o = True
+
 
             self._save_obs(env_idx, obs)
         return (self._obs_from_buf(), np.copy(self.buf_rews), np.copy(self.buf_dones), deepcopy(self.buf_infos))
