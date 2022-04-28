@@ -91,6 +91,7 @@ class MyPPO(OnPolicyAlgorithm):
         _init_setup_model: bool = True,
         guide_point: int = 2**19 + 2**18,
         guide_prob: float = 0.1,
+        test_budget: int = 200,
     ):
 
         super(MyPPO, self).__init__(
@@ -121,7 +122,7 @@ class MyPPO(OnPolicyAlgorithm):
         )
 
         self.guide_point = guide_point
-
+        self.test_budget = test_budget
         # Sanity check, otherwise it will lead to noisy gradient and NaN
         # because of the advantage normalization
         assert (

@@ -309,6 +309,9 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         return
         '''
 
+        poolfile= open("fuzzer_pool_1h_guide_train.p", 'rb')
+        pool = pickle.load(poolfile)
+        
         from lunar import Mutator, EnvWrapper
         game = EnvWrapper.Wrapper("lunar")
         game.env = self.env
@@ -317,37 +320,37 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         mutator = Mutator.LunarOracleMoonHeightMutator(game)
         rng = np.random.default_rng(self.seed)
 
-        confirmation_budget = 10
+        # confirmation_budget = 10
 
         test_budget = self.test_budget
-        self.env.guided_states.clear()
+        self.env.guiding_states.clear()
 
         while test_budget > 0:
-            org_state = rng.choice(self.fuzzer.pool)
+            org_state = rng.choice(pool)
             org_state = org_state.hi_lvl_state
             rlx_state = mutator.mutate(org_state, rng, 'relax')
 
             o_org, o_rlx = 0, 0
             
             # dummy_vec_env reset is modified
-            for _ in range(confirmation_budget):
-                org_llvl_state = self.env.reset(org_state)
-                o_org += game.rollout(org_llvl_state)
+            # for _ in range(confirmation_budget):
+            org_llvl_state = self.env.reset(org_state)
+            o_org = game.rollout(org_llvl_state)
 
             # dummy_vec_env reset is modified
-            for _ in range(confirmation_budget):
-                rlx_llvl_state = self.env.reset(rlx_state)
-                o_rlx += game.rollout(rlx_llvl_state)
+            # for _ in range(confirmation_budget):
+            rlx_llvl_state = self.env.reset(rlx_state)
+            o_rlx = game.rollout(rlx_llvl_state)
 
             if o_org > o_rlx:
                 # guided states declared in DummyVecEnv class where step (step_wait) is implemented
-                self.env.guided_states.append((org_state, rlx_state))
-                print("BUG FOUND!", len(self.env.guided_states))
+                self.env.guiding_states.append((org_state, rlx_state))
+                print("BUG FOUND!", len(self.env.guiding_states))
             
-            if test_budget % 50 == 0:
+            if test_budget % 500 == 0:
                 print("Remaining test budget: ", int(test_budget))
 
             test_budget -= 1
 
-        test_out = open("lunar_bug_states_%d_test_1h_fuzz.p" % self.test_budget, "wb")
-        pickle.dump(self.env.guided_states, test_out)
+        test_out = open("train_lunar/bug_states_GP%d_GPR%f_RS%d_TB%d_1H_fuzz.p" % (self.guide_point, self.env.guide_prob, self.seed, self.test_budget), "wb")
+        pickle.dump(self.env.guiding_states, test_out)
