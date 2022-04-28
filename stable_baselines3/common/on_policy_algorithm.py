@@ -232,10 +232,9 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
         while self.num_timesteps < total_timesteps:
 
-            if not self.guided_train and self.num_timesteps > self.guide_point:
-                self.explore()
+            if not self.env.guiding_states and self.num_timesteps > self.guide_point:
+                # self.explore()
                 self.test()
-                self.guided_train = True
 
             continue_training = self.collect_rollouts(self.env, callback, self.rollout_buffer, n_rollout_steps=self.n_steps)
 
@@ -299,15 +298,17 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         #pickle.dump(self.fuzzer.pool, fuzzer_summary)
 
     def test(self):
-
-        self.env.rng = np.random.default_rng(self.seed)
+        
+        '''
         # lunar_bug_states_2000_test_1h_fuzz.p
-        prev_test = open("lunar_bug_states_2000_test_1h_fuzz.p", "rb")
+        prev_test = open("lunar_bug_states_20000_test_1h_fuzz.p", "rb")
         bugs = pickle.load(prev_test)
-        self.env.guided_states = bugs
+        print("BUGS: ", len(bugs))
+        self.env.guiding_states = bugs
         prev_test.close()
         return
-        
+        '''
+
         from lunar import Mutator, EnvWrapper
         game = EnvWrapper.Wrapper("lunar")
         game.env = self.env
@@ -341,12 +342,10 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             if o_org > o_rlx:
                 # guided states declared in DummyVecEnv class where step (step_wait) is implemented
                 self.env.guided_states.append((org_state, rlx_state))
-                self.logger.record("BUG FOUND!", test_budget)
-                self.logger.dump(step=-1)
+                print("BUG FOUND!", len(self.env.guided_states))
             
             if test_budget % 50 == 0:
-                self.logger.record("Remaining test budget: ", int(test_budget))
-                self.logger.dump(step=-1)
+                print("Remaining test budget: ", int(test_budget))
 
             test_budget -= 1
 
