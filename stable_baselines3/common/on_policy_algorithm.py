@@ -236,7 +236,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 # self.explore()
                 if not self.env.guiding_states: 
                     self.test()
-                elif self.num_timesteps % 2048 * 2 == 0:
+                elif self.num_timesteps % (2048 * 20) == 0:
                     self.check_fix()
 
             continue_training = self.collect_rollouts(self.env, callback, self.rollout_buffer, n_rollout_steps=self.n_steps)
@@ -339,12 +339,12 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             # dummy_vec_env reset is modified
             for _ in range(confirmation_budget):
                 org_llvl_state = self.env.reset(org_state)
-                o_org = game.rollout(org_llvl_state)
+                o_org += game.rollout(org_llvl_state)
 
             # dummy_vec_env reset is modified
             for _ in range(confirmation_budget):
                 rlx_llvl_state = self.env.reset(rlx_state)
-                o_rlx = game.rollout(rlx_llvl_state)
+                o_rlx += game.rollout(rlx_llvl_state)
 
             if o_org > o_rlx:
                 # guided states declared in DummyVecEnv class where step (step_wait) is implemented
@@ -368,7 +368,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         game.env = self.env
         game.model = self.policy
 
-        fw = open("mylog", "w")
+        fw = open("mylog", "a")
         confirmation_budget = 10
         for idx, (org_state, rlx_state) in enumerate(self.env.guiding_states):
             o_org, o_rlx = 0, 0
@@ -376,12 +376,12 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             # dummy_vec_env reset is modified
             for _ in range(confirmation_budget):
                 org_llvl_state = self.env.reset(org_state)
-                o_org = game.rollout(org_llvl_state)
+                o_org += game.rollout(org_llvl_state)
 
             # dummy_vec_env reset is modified
             for _ in range(confirmation_budget):
                 rlx_llvl_state = self.env.reset(rlx_state)
-                o_rlx = game.rollout(rlx_llvl_state)
+                o_rlx += game.rollout(rlx_llvl_state)
         
             fw.write("BUG %d - O_ORG:%d, O_RLX:%d\n" % (idx, o_org, o_rlx))
         

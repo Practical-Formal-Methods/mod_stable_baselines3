@@ -36,8 +36,6 @@ class DummyVecEnv(VecEnv):
         self.metadata = env.metadata
         self.guiding_states = list()  # filled in on_policy_algorithm.py
         self.rng = None  # initialized in on_policy_algorithm.py
-        self.guide_cnt = 0
-        self.done_cnt = 0
 
     def step_async(self, actions: np.ndarray) -> None:
         self.actions = actions
@@ -48,7 +46,6 @@ class DummyVecEnv(VecEnv):
                 self.actions[env_idx]
             )
             if self.buf_dones[env_idx]:
-                self.done_cnt += 1
                 # save final observation where user can get it, then reset
                 self.buf_infos[env_idx]["terminal_observation"] = obs
                 
@@ -56,8 +53,6 @@ class DummyVecEnv(VecEnv):
                 if self.guiding_states and self.rng.random() < self.guide_prob:  # guide_prob set in myppo. it is set to 0 for normal training
                     org_state, rlx_state = self.rng.choice(self.guiding_states)
                     obs = self.envs[env_idx].reset(rlx_state)
-                    self.guide_cnt += 1
-                    print(self.guide_cnt, self.done_cnt)
                     # if self.next_guide == 'org':
                     #     obs = self.envs[env_idx].reset(org_state)
                     #     self.next_guide = 'rlx'
