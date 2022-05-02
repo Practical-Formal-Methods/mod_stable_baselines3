@@ -236,8 +236,8 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 # self.explore()
                 if not self.env.guiding_states: 
                     self.test()
-                elif self.num_timesteps % (2048 * 20) == 0:
-                    self.check_fix()
+                elif self.num_timesteps % (2048 * 30) == 0:
+                    self.check_progress()
 
             continue_training = self.collect_rollouts(self.env, callback, self.rollout_buffer, n_rollout_steps=self.n_steps)
 
@@ -323,12 +323,13 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         mutator = Mutator.LunarOracleMoonHeightMutator(game)
         rng = np.random.default_rng(self.seed)
 
-        confirmation_budget = 10
+        confirmation_budget = 5
 
         test_budget = self.test_budget
         self.env.guiding_states.clear()
 
         fw = open("mylog", "w")
+        num_bugs = 0
         while test_budget > 0:
             org_state = rng.choice(pool)
             org_state = org_state.hi_lvl_state
@@ -352,12 +353,12 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 print("BUG FOUND! O_ORG:%d, O_RLX:%d" % (o_org, o_rlx))
                 fw.write("BUG FOUND! O_ORG:%d, O_RLX:%d\n" % (o_org, o_rlx))
 
-                if len(self.env.guiding_states) == 3: break
-
             if test_budget % 500 == 0:
                 print("Remaining test budget: ", int(test_budget))
 
             test_budget -= 1
+
+        fw.write("%d bugs found.\n\n")
 
         test_out = open("train_lunar/bug_states_GP%d_GPR%f_RS%d_TB%d_1H_fuzz.p" % (self.guide_point, self.env.guide_prob, self.seed, self.test_budget), "wb")
         pickle.dump(self.env.guiding_states, test_out)
@@ -369,7 +370,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         game.model = self.policy
 
         fw = open("mylog", "a")
-        confirmation_budget = 10
+        confirmation_budget = 5
         for idx, (org_state, rlx_state) in enumerate(self.env.guiding_states):
             o_org, o_rlx = 0, 0
             
@@ -387,3 +388,45 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         
         fw.write('\n')
         fw.close()
+
+    def check_progress(self):
+        from lunar import Mutator, EnvWrapper
+        game = EnvWrapper.Wrapper("lunar")
+        game.env = self.env
+        game.model = self.policy
+
+        fw = open("mylog", "a")
+        confirmation_budget = 5
+
+        poolfile= open("fuzzer_pool_1h_guide_train.p", 'rb')
+        pool = pickle.load(poolfile)
+
+        mutator = Mutator.LunarOracleMoonHeightMutator(game)
+        rng = np.random.default_rng(self.seed * self.seed)  # test seed
+
+        test_budget = self.test_budget
+        num_bugs = 0
+        while test_budget > 0:
+            org_state = rng.choice(pool)
+            org_state = org_state.hi_lvl_state
+            rlx_state = mutator.mutate(org_state, rng, 'relax')
+
+            o_org, o_rlx = 0, 0
+            
+            # dummy_vec_env reset is modified
+            for _ in range(confirmation_budget):
+                org_llvl_state = self.env.reset(org_state)
+                o_org += game.rollout(org_llvl_state)
+
+            # dummy_vec_env reset is modified
+            for _ in range(confirmation_budget):
+                rlx_llvl_state = self.env.reset(rlx_state)
+                o_rlx += game.rollout(rlx_llvl_state)
+
+            if o_org > o_rlx:
+                num_bugs+=1
+                fw.write("BUG FOUND! O_ORG:%d, O_RLX:%d\n" % (o_org, o_rlx))
+        
+            test_budget -= 1
+
+        fw.write("%d bugs found.\n\n")
