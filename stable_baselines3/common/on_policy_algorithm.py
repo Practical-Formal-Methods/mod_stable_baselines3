@@ -232,9 +232,12 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
         while self.num_timesteps < total_timesteps:
 
-            if not self.env.guiding_states and self.num_timesteps > self.guide_point:
+            if self.num_timesteps > self.guide_point:
                 # self.explore()
-                self.test()
+                if not self.env.guiding_states: 
+                    self.test()
+                elif self.num_timesteps % 2048 * 2 == 0:
+                    self.check_fix()
 
             continue_training = self.collect_rollouts(self.env, callback, self.rollout_buffer, n_rollout_steps=self.n_steps)
 
@@ -320,11 +323,12 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         mutator = Mutator.LunarOracleMoonHeightMutator(game)
         rng = np.random.default_rng(self.seed)
 
-        # confirmation_budget = 10
+        confirmation_budget = 10
 
         test_budget = self.test_budget
         self.env.guiding_states.clear()
 
+        fw = open("mylog", "w")
         while test_budget > 0:
             org_state = rng.choice(pool)
             org_state = org_state.hi_lvl_state
@@ -333,20 +337,23 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             o_org, o_rlx = 0, 0
             
             # dummy_vec_env reset is modified
-            # for _ in range(confirmation_budget):
-            org_llvl_state = self.env.reset(org_state)
-            o_org = game.rollout(org_llvl_state)
+            for _ in range(confirmation_budget):
+                org_llvl_state = self.env.reset(org_state)
+                o_org = game.rollout(org_llvl_state)
 
             # dummy_vec_env reset is modified
-            # for _ in range(confirmation_budget):
-            rlx_llvl_state = self.env.reset(rlx_state)
-            o_rlx = game.rollout(rlx_llvl_state)
+            for _ in range(confirmation_budget):
+                rlx_llvl_state = self.env.reset(rlx_state)
+                o_rlx = game.rollout(rlx_llvl_state)
 
             if o_org > o_rlx:
                 # guided states declared in DummyVecEnv class where step (step_wait) is implemented
                 self.env.guiding_states.append((org_state, rlx_state))
-                print("BUG FOUND!", len(self.env.guiding_states))
-            
+                print("BUG FOUND! O_ORG:%d, O_RLX:%d" % (o_org, o_rlx))
+                fw.write("BUG FOUND! O_ORG:%d, O_RLX:%d\n" % (o_org, o_rlx))
+
+                if len(self.env.guiding_states) == 3: break
+
             if test_budget % 500 == 0:
                 print("Remaining test budget: ", int(test_budget))
 
@@ -354,3 +361,29 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
         test_out = open("train_lunar/bug_states_GP%d_GPR%f_RS%d_TB%d_1H_fuzz.p" % (self.guide_point, self.env.guide_prob, self.seed, self.test_budget), "wb")
         pickle.dump(self.env.guiding_states, test_out)
+
+    def check_fix(self):
+        from lunar import Mutator, EnvWrapper
+        game = EnvWrapper.Wrapper("lunar")
+        game.env = self.env
+        game.model = self.policy
+
+        fw = open("mylog", "w")
+        confirmation_budget = 10
+        for idx, (org_state, rlx_state) in enumerate(self.env.guiding_states):
+            o_org, o_rlx = 0, 0
+            
+            # dummy_vec_env reset is modified
+            for _ in range(confirmation_budget):
+                org_llvl_state = self.env.reset(org_state)
+                o_org = game.rollout(org_llvl_state)
+
+            # dummy_vec_env reset is modified
+            for _ in range(confirmation_budget):
+                rlx_llvl_state = self.env.reset(rlx_state)
+                o_rlx = game.rollout(rlx_llvl_state)
+        
+            fw.write("BUG %d - O_ORG:%d, O_RLX:%d\n" % (idx, o_org, o_rlx))
+        
+        fw.write('\n')
+        fw.close()
