@@ -328,8 +328,9 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         test_budget = self.test_budget
         self.env.guiding_states.clear()
 
-        fw = open("mylog", "w")
+        fw = open("mylog_%d" % self.seed, "w")
         num_bugs = 0
+        all_org, all_rlx = 0, 0
         while test_budget > 0:
             org_state = rng.choice(pool)
             org_state = org_state.hi_lvl_state
@@ -351,14 +352,20 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 # guided states declared in DummyVecEnv class where step (step_wait) is implemented
                 self.env.guiding_states.append((org_state, rlx_state))
                 print("BUG FOUND! O_ORG:%d, O_RLX:%d" % (o_org, o_rlx))
-                fw.write("BUG FOUND! O_ORG:%d, O_RLX:%d\n" % (o_org, o_rlx))
+                #fw.write("BUG FOUND! O_ORG:%d, O_RLX:%d\n" % (o_org, o_rlx))
+
+                all_org += o_org
+                all_rlx += o_rlx
+
+                num_bugs += 1
 
             if test_budget % 500 == 0:
                 print("Remaining test budget: ", int(test_budget))
-
+            
             test_budget -= 1
 
-        fw.write("%d bugs found.\n\n")
+        fw.write("Total win org: %d, Total win rlx: %d\n" % (all_org, all_rlx))
+        fw.write("%d bugs found.\n\n" % num_bugs)
 
         test_out = open("train_lunar/bug_states_GP%d_GPR%f_RS%d_TB%d_1H_fuzz.p" % (self.guide_point, self.env.guide_prob, self.seed, self.test_budget), "wb")
         pickle.dump(self.env.guiding_states, test_out)
@@ -369,7 +376,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         game.env = self.env
         game.model = self.policy
 
-        fw = open("mylog", "a")
+        fw = open("mylog3", "a")
         confirmation_budget = 5
         for idx, (org_state, rlx_state) in enumerate(self.env.guiding_states):
             o_org, o_rlx = 0, 0
@@ -395,7 +402,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         game.env = self.env
         game.model = self.policy
 
-        fw = open("mylog", "a")
+        fw = open("mylog_%d" % self.seed, "a")
         confirmation_budget = 5
 
         poolfile= open("fuzzer_pool_1h_guide_train.p", 'rb')
@@ -406,6 +413,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
         test_budget = self.test_budget
         num_bugs = 0
+        all_org, all_rlx = 0, 0
         while test_budget > 0:
             org_state = rng.choice(pool)
             org_state = org_state.hi_lvl_state
@@ -424,9 +432,14 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 o_rlx += game.rollout(rlx_llvl_state)
 
             if o_org > o_rlx:
-                num_bugs+=1
-                fw.write("BUG FOUND! O_ORG:%d, O_RLX:%d\n" % (o_org, o_rlx))
+                num_bugs += 1
+                #fw.write("BUG FOUND! O_ORG:%d, O_RLX:%d\n" % (o_org, o_rlx))
         
+                all_org += o_org
+                all_rlx += o_rlx
+            
             test_budget -= 1
 
-        fw.write("%d bugs found.\n\n")
+        fw.write("Total win org: %d, Total win rlx: %d\n" % (all_org, all_rlx))
+        fw.write("%d bugs found.\n\n" % num_bugs)
+
