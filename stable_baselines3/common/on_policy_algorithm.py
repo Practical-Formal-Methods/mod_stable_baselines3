@@ -1,10 +1,14 @@
 import time
 import pickle
+from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
-from mod_gym import gym
 import numpy as np
 import torch as th
+
+from lunar import Mutator, EnvWrapper
+
+from mod_gym import gym
 
 from mod_stable_baselines3.stable_baselines3.common.base_class import BaseAlgorithm
 from mod_stable_baselines3.stable_baselines3.common.buffers import DictRolloutBuffer, RolloutBuffer
@@ -99,6 +103,9 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         self.vf_coef = vf_coef
         self.max_grad_norm = max_grad_norm
         self.rollout_buffer = None
+
+        self.best_bugs = float('inf')
+        self.best_rew_of_bb  = float('-inf')
 
         if _init_setup_model:
             self._setup_model()
@@ -227,17 +234,12 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         total_timesteps, callback = self._setup_learn(
             total_timesteps, eval_env, callback, eval_freq, n_eval_episodes, eval_log_path, reset_num_timesteps, tb_log_name
         )
+
+        self.setup_test()
         
         callback.on_training_start(locals(), globals())
 
         while self.num_timesteps < total_timesteps:
-
-            if self.num_timesteps > self.guide_point:
-                # self.explore()
-                if not self.env.guiding_states: 
-                    self.test()
-                elif self.num_timesteps % (2048 * 30) == 0:
-                    self.check_progress()
 
             continue_training = self.collect_rollouts(self.env, callback, self.rollout_buffer, n_rollout_steps=self.n_steps)
 
@@ -260,6 +262,14 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 self.logger.dump(step=self.num_timesteps)
 
             self.train()
+            
+            # if self.num_timesteps > self.guide_point and self.num_timesteps % (2048 * 50) == 0:
+            #     curseed = self.num_timesteps
+            #     self.test(curseed, self.test_budget, update_guide=True)
+            
+            # if self.num_timesteps % (2048 * 10) == 0:
+            if self.num_timesteps > self.guide_point:
+                self.test()
 
         callback.on_training_end()
 
@@ -269,6 +279,67 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         state_dicts = ["policy", "policy.optimizer"]
 
         return state_dicts, []
+
+
+    def setup_test(self):
+        game = EnvWrapper.Wrapper("lunar")
+        game.env = self.env
+        game.model = self.policy
+        self.game = game 
+
+        mutator = Mutator.LunarOracleMoonHeightMutator(game)
+        rng = np.random.default_rng(self.seed)
+
+        poolfile= open("fuzzer_pool_1h_guide_train.p", 'rb')
+        pool = pickle.load(poolfile)
+        self.pool = rng.choice(pool, 20)
+        self.testsuite = defaultdict(list)
+        for idx, org_state in enumerate(self.pool):
+            rlx_state = mutator.mutate(org_state, rng, 'relax')
+            self.testsuite[idx].append(rlx_state)
+
+
+    def test(self):
+        fw = open("mylog_%d" % self.seed, "a")
+
+        self.env.guiding_states.clear()
+
+        num_bugs = 0
+        for org_idx, rlx_list in self.testsuite.items():
+            org = self.pool[org_idx]
+            for rlx in rlx_list:
+                org_llvl = self.env.reset(org)
+                o_org = self.game.rollout(org_llvl)
+                rlx_llvl = self.env.reset(rlx)
+                o_rlx = self.game.rollout(rlx_llvl)
+
+                if o_org <= o_rlx: continue
+
+                org_llvl = self.env.reset(org)
+                o_org = self.game.rollout(org_llvl)
+                rlx_llvl = self.env.reset(rlx)
+                o_rlx = self.game.rollout(rlx_llvl)
+
+                if o_org > o_rlx:
+                    self.env.guiding_states.append((org, rlx))
+                    num_bugs += 1
+
+        if num_bugs < self.best_bugs:
+            self.best_bugs = num_bugs
+
+            avg_rew = self.game.eval(eval_budget=30)
+
+            fw.write("Better agent found with %d bugs and %f reward at %d timesteps.\n" % (num_bugs, avg_rew, self.num_timesteps))
+
+            self.best_rew_of_bb = avg_rew
+        elif num_bugs == self.best_bugs:
+            avg_rew = self.game.eval(eval_budget=30)
+
+            if avg_rew > self.best_rew_of_bb:
+                fw.write("Better agent found with %d bugs and %f reward at %d timesteps.\n" % (num_bugs, avg_rew, self.num_timesteps))
+
+                self.best_rew_of_bb = avg_rew
+
 
     def explore(self):
         from lunar import Fuzzer, EnvWrapper
@@ -300,17 +371,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         #fuzzer_summary = open("fuzzer_pool_1h_guide_train.p", "wb")
         #pickle.dump(self.fuzzer.pool, fuzzer_summary)
 
-    def test(self):
-        
-        '''
-        # lunar_bug_states_2000_test_1h_fuzz.p
-        prev_test = open("lunar_bug_states_20000_test_1h_fuzz.p", "rb")
-        bugs = pickle.load(prev_test)
-        print("BUGS: ", len(bugs))
-        self.env.guiding_states = bugs
-        prev_test.close()
-        return
-        '''
+    def old_test(self):
 
         poolfile= open("fuzzer_pool_1h_guide_train.p", 'rb')
         pool = pickle.load(poolfile)
@@ -369,77 +430,3 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
         test_out = open("train_lunar/bug_states_GP%d_GPR%f_RS%d_TB%d_1H_fuzz.p" % (self.guide_point, self.env.guide_prob, self.seed, self.test_budget), "wb")
         pickle.dump(self.env.guiding_states, test_out)
-
-    def check_fix(self):
-        from lunar import Mutator, EnvWrapper
-        game = EnvWrapper.Wrapper("lunar")
-        game.env = self.env
-        game.model = self.policy
-
-        fw = open("mylog3", "a")
-        confirmation_budget = 5
-        for idx, (org_state, rlx_state) in enumerate(self.env.guiding_states):
-            o_org, o_rlx = 0, 0
-            
-            # dummy_vec_env reset is modified
-            for _ in range(confirmation_budget):
-                org_llvl_state = self.env.reset(org_state)
-                o_org += game.rollout(org_llvl_state)
-
-            # dummy_vec_env reset is modified
-            for _ in range(confirmation_budget):
-                rlx_llvl_state = self.env.reset(rlx_state)
-                o_rlx += game.rollout(rlx_llvl_state)
-        
-            fw.write("BUG %d - O_ORG:%d, O_RLX:%d\n" % (idx, o_org, o_rlx))
-        
-        fw.write('\n')
-        fw.close()
-
-    def check_progress(self):
-        from lunar import Mutator, EnvWrapper
-        game = EnvWrapper.Wrapper("lunar")
-        game.env = self.env
-        game.model = self.policy
-
-        fw = open("mylog_%d" % self.seed, "a")
-        confirmation_budget = 5
-
-        poolfile= open("fuzzer_pool_1h_guide_train.p", 'rb')
-        pool = pickle.load(poolfile)
-
-        mutator = Mutator.LunarOracleMoonHeightMutator(game)
-        rng = np.random.default_rng(self.seed * self.seed)  # test seed
-
-        test_budget = self.test_budget
-        num_bugs = 0
-        all_org, all_rlx = 0, 0
-        while test_budget > 0:
-            org_state = rng.choice(pool)
-            org_state = org_state.hi_lvl_state
-            rlx_state = mutator.mutate(org_state, rng, 'relax')
-
-            o_org, o_rlx = 0, 0
-            
-            # dummy_vec_env reset is modified
-            for _ in range(confirmation_budget):
-                org_llvl_state = self.env.reset(org_state)
-                o_org += game.rollout(org_llvl_state)
-
-            # dummy_vec_env reset is modified
-            for _ in range(confirmation_budget):
-                rlx_llvl_state = self.env.reset(rlx_state)
-                o_rlx += game.rollout(rlx_llvl_state)
-
-            if o_org > o_rlx:
-                num_bugs += 1
-                #fw.write("BUG FOUND! O_ORG:%d, O_RLX:%d\n" % (o_org, o_rlx))
-        
-                all_org += o_org
-                all_rlx += o_rlx
-            
-            test_budget -= 1
-
-        fw.write("Total win org: %d, Total win rlx: %d\n" % (all_org, all_rlx))
-        fw.write("%d bugs found.\n\n" % num_bugs)
-
