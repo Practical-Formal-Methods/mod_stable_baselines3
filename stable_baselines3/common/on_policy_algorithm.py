@@ -267,7 +267,8 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             #     self.test(curseed, self.test_budget, update_guide=True)
             
             # if self.num_timesteps % (2048 * 10) == 0:
-            if self.num_timesteps > self.guide_point:
+
+            if self.num_timesteps % (2048 * 4) == 0:
                 self.test()
 
         callback.on_training_end()
@@ -293,20 +294,20 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
         poolfile= open("fuzzer_pool_1h_guide_train.p", 'rb')
         pool = pickle.load(poolfile)
-        self.pool = rng.choice(pool, 700)
+        self.pool = rng.choice(pool, self.exlpr_budget)
         self.testsuite = defaultdict(list)
         for idx, org_state in enumerate(self.pool):
             org_state = org_state.hi_lvl_state
-            for _ in range(3):
+            for _ in range(self.mut_budget):
                 rlx_state = mutator.mutate(org_state, rng, 'relax')
                 self.testsuite[idx].append(rlx_state)
 
 
     def test(self):
-        fw = open(self.log_dir + "/mylog_%d" % self.seed, "a")
-
+        fw = open(self.log_dir + "/bug_rew_RS%d.log" % self.seed, "a")
+        
+        self.env.locked = True
         self.env.guiding_states.clear()
-        new_guiding_states = []
         num_bugs = 0
         for org_idx, rlx_list in self.testsuite.items():
             org = self.pool[org_idx]
@@ -324,29 +325,40 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 o_rlx = self.game.rollout(rlx_llvl)
 
                 if o_org > o_rlx:
-                    new_guiding_states.append((org, rlx))
+                    self.env.guiding_states.append((org, rlx))
+                    self.env.all_guiding_states.append((org, rlx))
                     num_bugs += 1
+        
+        self.game.env.seed(self.seed)
+        avg_rew = self.game.eval(eval_budget=30)
+        alpha = 10
+        cur_utility = alpha * (self.explr_budget * self.mut_budget - num_bugs) + avg_rew
 
-        if num_bugs < self.best_bugs:
-            self.best_bugs = num_bugs
-            self.game.env.seed(self.seed)
-            avg_rew = self.game.eval(eval_budget=30)
-
+        if cur_utility > self.utility:
+            self.utility = cur_utility 
             fw.write("Better agent found with %d bugs and %f reward at %d timesteps.\n" % (num_bugs, avg_rew, self.num_timesteps))
 
-            self.best_rew_of_bb = avg_rew
-        elif num_bugs == self.best_bugs:
-            self.game.env.seed(self.seed)
-            avg_rew = self.game.eval(eval_budget=30)
+        self.env.locked = False
 
-            if avg_rew > self.best_rew_of_bb:
-                fw.write("Better agent found with %d bugs and %f reward at %d timesteps.\n" % (num_bugs, avg_rew, self.num_timesteps))
+        # if num_bugs < self.best_bugs:
+        #     self.best_bugs = num_bugs
+        #     self.game.env.seed(self.seed)
+        #     avg_rew = self.game.eval(eval_budget=30)
 
-                self.best_rew_of_bb = avg_rew
+        #     fw.write("Better agent found with %d bugs and %f reward at %d timesteps.\n" % (num_bugs, avg_rew, self.num_timesteps))
 
-        self.env.guiding_states = new_guiding_states
+        #     self.best_rew_of_bb = avg_rew
+        # elif num_bugs == self.best_bugs:
+        #     self.game.env.seed(self.seed)
+        #     avg_rew = self.game.eval(eval_budget=30)
+
+        #     if avg_rew > self.best_rew_of_bb:
+        #         fw.write("Better agent found with %d bugs and %f reward at %d timesteps.\n" % (num_bugs, avg_rew, self.num_timesteps))
+
+        #         self.best_rew_of_bb = avg_rew
 
         fw.close()
+
 
     def explore(self):
         from lunar import Fuzzer, EnvWrapper

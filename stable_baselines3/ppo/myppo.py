@@ -91,8 +91,9 @@ class MyPPO(OnPolicyAlgorithm):
         _init_setup_model: bool = True,
         guide_point: int = 2**19 + 2**18,
         guide_prob: float = 0.1,
-        test_budget: int = 200,
         log_dir: str = "logs/",
+        explr_budget: int = 800,
+        mut_budget: int = 2,
     ):
 
         super(MyPPO, self).__init__(
@@ -124,7 +125,9 @@ class MyPPO(OnPolicyAlgorithm):
         
         self.log_dir = log_dir
         self.guide_point = guide_point
-        self.test_budget = test_budget
+        self.explr_budget = explr_budget
+        self.mut_budget = mut_budget
+        self.utility = float('-inf')
         # Sanity check, otherwise it will lead to noisy gradient and NaN
         # because of the advantage normalization
         assert (
