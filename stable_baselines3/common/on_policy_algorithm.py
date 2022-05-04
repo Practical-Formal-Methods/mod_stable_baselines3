@@ -6,7 +6,6 @@ from typing import Any, Dict, List, Optional, Tuple, Type, Union
 import numpy as np
 import torch as th
 
-from lunar import Mutator, EnvWrapper
 
 from mod_gym import gym
 
@@ -282,6 +281,8 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
 
     def setup_test(self):
+        from lunar import Mutator, EnvWrapper
+        
         game = EnvWrapper.Wrapper("lunar")
         game.env = self.env
         game.model = self.policy
@@ -292,15 +293,17 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
         poolfile= open("fuzzer_pool_1h_guide_train.p", 'rb')
         pool = pickle.load(poolfile)
-        self.pool = rng.choice(pool, 20)
+        self.pool = rng.choice(pool, 700)
         self.testsuite = defaultdict(list)
         for idx, org_state in enumerate(self.pool):
-            rlx_state = mutator.mutate(org_state, rng, 'relax')
-            self.testsuite[idx].append(rlx_state)
+            org_state = org_state.hi_lvl_state
+            for _ in range(3):
+                rlx_state = mutator.mutate(org_state, rng, 'relax')
+                self.testsuite[idx].append(rlx_state)
 
 
     def test(self):
-        fw = open("mylog_%d" % self.seed, "a")
+        fw = open(self.log_dir + "/mylog_%d" % self.seed, "a")
 
         self.env.guiding_states.clear()
 
@@ -308,14 +311,14 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         for org_idx, rlx_list in self.testsuite.items():
             org = self.pool[org_idx]
             for rlx in rlx_list:
-                org_llvl = self.env.reset(org)
+                org_llvl = self.env.reset(org.hi_lvl_state)
                 o_org = self.game.rollout(org_llvl)
                 rlx_llvl = self.env.reset(rlx)
                 o_rlx = self.game.rollout(rlx_llvl)
 
                 if o_org <= o_rlx: continue
 
-                org_llvl = self.env.reset(org)
+                org_llvl = self.env.reset(org.hi_lvl_state)
                 o_org = self.game.rollout(org_llvl)
                 rlx_llvl = self.env.reset(rlx)
                 o_rlx = self.game.rollout(rlx_llvl)
@@ -340,6 +343,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
                 self.best_rew_of_bb = avg_rew
 
+        fw.close()
 
     def explore(self):
         from lunar import Fuzzer, EnvWrapper
