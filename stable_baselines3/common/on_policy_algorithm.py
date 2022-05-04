@@ -306,7 +306,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         fw = open(self.log_dir + "/mylog_%d" % self.seed, "a")
 
         self.env.guiding_states.clear()
-
+        new_guiding_states = []
         num_bugs = 0
         for org_idx, rlx_list in self.testsuite.items():
             org = self.pool[org_idx]
@@ -324,24 +324,27 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 o_rlx = self.game.rollout(rlx_llvl)
 
                 if o_org > o_rlx:
-                    self.env.guiding_states.append((org, rlx))
+                    new_guiding_states.append((org, rlx))
                     num_bugs += 1
 
         if num_bugs < self.best_bugs:
             self.best_bugs = num_bugs
-
+            self.game.env.seed(self.seed)
             avg_rew = self.game.eval(eval_budget=30)
 
             fw.write("Better agent found with %d bugs and %f reward at %d timesteps.\n" % (num_bugs, avg_rew, self.num_timesteps))
 
             self.best_rew_of_bb = avg_rew
         elif num_bugs == self.best_bugs:
+            self.game.env.seed(self.seed)
             avg_rew = self.game.eval(eval_budget=30)
 
             if avg_rew > self.best_rew_of_bb:
                 fw.write("Better agent found with %d bugs and %f reward at %d timesteps.\n" % (num_bugs, avg_rew, self.num_timesteps))
 
                 self.best_rew_of_bb = avg_rew
+
+        self.env.guiding_states = new_guiding_states
 
         fw.close()
 
