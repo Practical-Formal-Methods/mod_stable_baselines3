@@ -89,8 +89,9 @@ class MyPPO(OnPolicyAlgorithm):
         seed: Optional[int] = None,
         device: Union[th.device, str] = "auto",
         _init_setup_model: bool = True,
-        guide_point: int = 2**19 + 2**18,
-        guide_prob: float = 0.1,
+        # guide_point: int = 2**19 + 2**18,
+        # guide_prob: float = 0.1,
+        train_type: str = "normal",
         log_dir: str = "logs/",
         explr_budget: int = 800,
         mut_budget: int = 2,
@@ -123,8 +124,9 @@ class MyPPO(OnPolicyAlgorithm):
             ),
         )
         
+        self.train_type = train_type
         self.log_dir = log_dir
-        self.guide_point = guide_point
+        # self.guide_point = guide_point
         self.explr_budget = explr_budget
         self.mut_budget = mut_budget
         self.utility = float('-inf')
@@ -135,7 +137,7 @@ class MyPPO(OnPolicyAlgorithm):
         ), "`batch_size` must be greater than 1. See https://github.com/DLR-RM/stable-baselines3/issues/440"
 
         if self.env is not None:
-            self.env.guide_prob = guide_prob
+            # self.env.guide_prob = guide_prob
             self.env.rng = np.random.default_rng(self.seed)
 
             # Check that `n_steps * n_envs > 1` to avoid NaN

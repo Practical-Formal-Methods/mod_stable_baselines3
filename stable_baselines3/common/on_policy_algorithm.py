@@ -266,9 +266,13 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             #     curseed = self.num_timesteps
             #     self.test(curseed, self.test_budget, update_guide=True)
             
-            # if self.num_timesteps % (2048 * 10) == 0:
+            if not self.train_type == "normal" and self.num_timesteps % (2048 * 50) == 0:
+                self.env.guide_prob = min(self.env.guide_prob+0.1, 0.5)
+                fw = open(self.log_dir + "/bug_rew_RS%d.log" % self.seed, "a")
+                fw.write("Guide probability increased to %f.\n" % self.env.guide_prob)
+                fw.close()
 
-            if self.num_timesteps % (2048 * 4) == 0:
+            if self.num_timesteps % (2048 * 5) == 0:
                 self.test()
 
         callback.on_training_end()
@@ -304,7 +308,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
 
     def test(self):
-        fw = open(self.log_dir + "/bug_rew_RS%d.log" % self.seed, "a")
+        fw = open(self.log_dir + "/bug_rew_%s_RS%d.log" % (self.train_type, self.seed), "a")
         
         cur_all_b_size = len(self.env.all_guiding_states)
         self.env.locked = True

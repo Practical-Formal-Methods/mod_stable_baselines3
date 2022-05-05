@@ -34,6 +34,7 @@ class DummyVecEnv(VecEnv):
         self.buf_infos = [{} for _ in range(self.num_envs)]
         self.actions = None
         self.metadata = env.metadata
+        self.guide_prob = 0  # updated
         self.guiding_states = list()  # filled in on_policy_algorithm.py
         self.all_guiding_states = list()  # filled in on_policy_algorithm.py
         self.all_guiding_st_idx = list()
