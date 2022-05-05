@@ -294,7 +294,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
         poolfile= open("fuzzer_pool_1h_guide_train.p", 'rb')
         pool = pickle.load(poolfile)
-        self.pool = rng.choice(pool, self.exlpr_budget)
+        self.pool = rng.choice(pool, self.explr_budget)
         self.testsuite = defaultdict(list)
         for idx, org_state in enumerate(self.pool):
             org_state = org_state.hi_lvl_state
@@ -306,6 +306,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
     def test(self):
         fw = open(self.log_dir + "/bug_rew_RS%d.log" % self.seed, "a")
         
+        cur_all_b_size = len(self.env.all_guiding_states)
         self.env.locked = True
         self.env.guiding_states.clear()
         num_bugs = 0
@@ -326,9 +327,15 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
                 if o_org > o_rlx:
                     self.env.guiding_states.append((org, rlx))
-                    self.env.all_guiding_states.append((org, rlx))
+                    if org_idx not in self.env.all_guiding_st_idx:
+                        self.env.all_guiding_states.append((org, rlx))
+                        self.env.all_guiding_st_idx.append(org_idx)
                     num_bugs += 1
         
+        if len(self.env.all_guiding_states) > cur_all_b_size:
+            cur_all_b_size = len(self.env.all_guiding_states) 
+            fw.write("Number of states found to be buggy so far is %d out of %d.\n" % (cur_all_b_size, self.explr_budget * self.mut_budget))
+
         self.game.env.seed(self.seed)
         avg_rew = self.game.eval(eval_budget=30)
         alpha = 10

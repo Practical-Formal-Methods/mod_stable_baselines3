@@ -36,6 +36,7 @@ class DummyVecEnv(VecEnv):
         self.metadata = env.metadata
         self.guiding_states = list()  # filled in on_policy_algorithm.py
         self.all_guiding_states = list()  # filled in on_policy_algorithm.py
+        self.all_guiding_st_idx = list()
         self.rng = None  # initialized in on_policy_algorithm.py
         self.locked = False
 
@@ -57,7 +58,7 @@ class DummyVecEnv(VecEnv):
                         guide_s_idx = self.rng.choice(range(len(self.guiding_states)))
                         _, rlx_state = self.guiding_states.pop(guide_s_idx)
                         obs = self.envs[env_idx].reset(rlx_state)
-                    elif self.rng.random() < self.guide_prob:
+                    elif self.all_guiding_states and self.rng.random() < self.guide_prob:
                         _, rlx_state = self.rng.choice(self.all_guiding_states)
                         obs = self.envs[env_idx].reset(rlx_state)
                     else:
