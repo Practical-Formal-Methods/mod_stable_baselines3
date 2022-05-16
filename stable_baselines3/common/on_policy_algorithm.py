@@ -268,7 +268,8 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             
             if not self.train_type == "normal" and self.num_timesteps % (2048 * 50) == 0:
                 self.env.guide_prob = min(self.env.guide_prob+0.15, 0.6)
-                fw = open(self.log_dir + "/bug_rew_RS%d.log" % self.seed, "a")
+                # fw = open(self.log_dir + "/bug_rew_RS%d.log" % self.seed, "a")
+                fw = open(self.log_dir + "/info.log", "a")
                 fw.write("Guide probability increased to %f.\n" % self.env.guide_prob)
                 fw.close()
 
@@ -308,9 +309,10 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
 
     def test(self):
-        fw = open(self.log_dir + "/bug_rew_%s_RS%d.log" % (self.train_type, self.seed), "a")
-        
-        cur_all_b_size = len(self.env.all_guiding_states)
+        info_f = open(self.log_dir + "/info.log", "a")
+        data_f = open(self.log_dir + "/bug_rew_%s_RS%d.log" % (self.train_type, self.seed), "a")
+
+        # cur_all_b_size = len(self.env.all_guiding_states)
         self.env.locked = True
         self.env.guiding_states.clear()
         num_bugs = 0
@@ -336,20 +338,28 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                         self.env.all_guiding_st_idx.append(org_idx)
                     num_bugs += 1
         
-        if len(self.env.all_guiding_states) > cur_all_b_size:
-            cur_all_b_size = len(self.env.all_guiding_states) 
-            fw.write("Number of states found to be buggy so far is %d out of %d.\n" % (cur_all_b_size, self.explr_budget * self.mut_budget))
+        # if len(self.env.all_guiding_states) > cur_all_b_size:
+        #     cur_all_b_size = len(self.env.all_guiding_states) 
+        #     fw.write("Number of states found to be buggy so far is %d out of %d.\n" % (cur_all_b_size, self.explr_budget * self.mut_budget))
 
         self.game.env.seed(self.seed)
         avg_rew = self.game.eval(eval_budget=30)
         self.env.last_avg_rew = avg_rew
-        alpha = 10
-        cur_utility = alpha * (self.explr_budget * self.mut_budget - num_bugs) + avg_rew
+        alpha1, alpha2 = 10, 5
+        utility1 = alpha1 * (self.explr_budget * self.mut_budget - num_bugs) + avg_rew
+        utility2 = alpha2 * (self.explr_budget * self.mut_budget - num_bugs) + avg_rew
 
-        if cur_utility > self.utility:
-            self.utility = cur_utility 
-            fw.write("Better agent found with %d bugs and %f reward at %d timesteps.\n" % (num_bugs, avg_rew, self.num_timesteps))
+        data_f.write("%d,%d,%f,%f,%f\n" % (self.num_timesteps, num_bugs, avg_rew, utility1, utility2))
 
+        # if cur_utility > self.utility:
+        #     self.utility = cur_utility 
+        #     fw.write("Better agent found with %d bugs and %f reward at %d timesteps.\n" % (num_bugs, avg_rew, self.num_timesteps))
+        
+        info_f.write("Current agent has %d bugs and %f reward at %d timesteps.\n" % (num_bugs, avg_rew, self.num_timesteps))
+
+        info_f.close()
+        data_f.close()
+        
         self.env.locked = False
 
         # if num_bugs < self.best_bugs:
@@ -369,7 +379,6 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
         #         self.best_rew_of_bb = avg_rew
 
-        fw.close()
 
 
     def explore(self):
