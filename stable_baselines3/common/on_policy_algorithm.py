@@ -267,7 +267,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             #     self.test(curseed, self.test_budget, update_guide=True)
             
             if not self.train_type == "normal" and self.num_timesteps % (2048 * 50) == 0:
-                self.env.guide_prob = min(self.env.guide_prob+0.1, 0.5)
+                self.env.guide_prob = min(self.env.guide_prob+0.15, 0.6)
                 fw = open(self.log_dir + "/bug_rew_RS%d.log" % self.seed, "a")
                 fw.write("Guide probability increased to %f.\n" % self.env.guide_prob)
                 fw.close()
@@ -342,6 +342,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
         self.game.env.seed(self.seed)
         avg_rew = self.game.eval(eval_budget=30)
+        self.env.last_avg_rew = avg_rew
         alpha = 10
         cur_utility = alpha * (self.explr_budget * self.mut_budget - num_bugs) + avg_rew
 

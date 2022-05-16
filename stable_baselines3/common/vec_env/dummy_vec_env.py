@@ -40,6 +40,7 @@ class DummyVecEnv(VecEnv):
         self.all_guiding_st_idx = list()
         self.rng = None  # initialized in on_policy_algorithm.py
         self.locked = False
+        self.last_avg_rew = 0
 
     def step_async(self, actions: np.ndarray) -> None:
         self.actions = actions
@@ -54,7 +55,7 @@ class DummyVecEnv(VecEnv):
                 self.buf_infos[env_idx]["terminal_observation"] = obs
                 
                 # wait until guiding states filled
-                if not self.locked and self.rng.random() < self.guide_prob:  # guide_prob set in myppo. it is set to 0 for normal training
+                if not self.locked and self.rng.random() < self.guide_prob and self.last_avg_rew > 0:  # guide_prob set in myppo. it is set to 0 for normal training
                     if self.guiding_states:
                         guide_s_idx = self.rng.choice(range(len(self.guiding_states)))
                         _, rlx_state = self.guiding_states.pop(guide_s_idx)
