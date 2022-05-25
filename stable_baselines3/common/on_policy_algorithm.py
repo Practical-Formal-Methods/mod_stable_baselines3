@@ -297,7 +297,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         mutator = Mutator.LunarOracleMoonHeightMutator(game)
         rng = np.random.default_rng(self.seed)
 
-        poolfile= open("fuzzer_pool_1h_guide_train.p", 'rb')
+        poolfile= open("lunar/state_pool.p", 'rb')
         pool = pickle.load(poolfile)
         self.pool = rng.choice(pool, self.explr_budget)
         self.testsuite = defaultdict(list)
@@ -320,16 +320,16 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             org = self.pool[org_idx]
             for rlx in rlx_list:
                 org_llvl = self.env.reset(org.hi_lvl_state)
-                o_org = self.game.rollout(org_llvl)
+                o_org = self.game.play(org_llvl)
                 rlx_llvl = self.env.reset(rlx)
-                o_rlx = self.game.rollout(rlx_llvl)
+                o_rlx = self.game.play(rlx_llvl)
 
                 if o_org <= o_rlx: continue
 
                 org_llvl = self.env.reset(org.hi_lvl_state)
-                o_org = self.game.rollout(org_llvl)
+                o_org = self.game.play(org_llvl)
                 rlx_llvl = self.env.reset(rlx)
-                o_rlx = self.game.rollout(rlx_llvl)
+                o_rlx = self.game.play(rlx_llvl)
 
                 if o_org > o_rlx:
                     self.env.guiding_states.append((org, rlx))
