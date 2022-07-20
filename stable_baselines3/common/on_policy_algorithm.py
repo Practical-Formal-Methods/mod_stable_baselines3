@@ -337,16 +337,16 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         for org_idx, rlx_list in self.testsuite.items():
             org = self.pool[org_idx]
             for rlx in rlx_list:
-                org_llvl = self.env.reset(org.hi_lvl_state)
+                org_llvl = self.env.reset(org.hi_lvl_state, org.rand_state)
                 o_org = self.game.play(org_llvl)
-                rlx_llvl = self.env.reset(rlx)
+                rlx_llvl = self.env.reset(rlx, org.rand_state)
                 o_rlx = self.game.play(rlx_llvl)
 
                 if o_org <= o_rlx: continue
 
-                org_llvl = self.env.reset(org.hi_lvl_state)
+                org_llvl = self.env.reset(org.hi_lvl_state, org.rand_state)
                 o_org = self.game.play(org_llvl)
-                rlx_llvl = self.env.reset(rlx)
+                rlx_llvl = self.env.reset(rlx, org.rand_state)
                 o_rlx = self.game.play(rlx_llvl)
 
                 if o_org > o_rlx:
