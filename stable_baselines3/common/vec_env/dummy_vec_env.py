@@ -55,7 +55,7 @@ class DummyVecEnv(VecEnv):
                 self.buf_infos[env_idx]["terminal_observation"] = obs
                 
                 # wait until guiding states filled
-                if not self.locked and self.rng.random() < self.guide_prob and self.last_avg_rew > 0:  # guide_prob set in myppo. it is set to 0 for normal training
+                if not self.locked and self.rng.random() < self.guide_prob and self.last_avg_rew > 100:  # guide_prob set in myppo. it is set to 0 for normal training
                     if self.guiding_states:
                         guide_s_idx = self.rng.choice(range(len(self.guiding_states)))
                         _, rlx_state = self.guiding_states.pop(guide_s_idx)
@@ -79,9 +79,9 @@ class DummyVecEnv(VecEnv):
         return seeds
 
     # works with mod_gym lunar and bipedal envs
-    def reset(self, state=None) -> VecEnvObs:
+    def reset(self, state=None, rand_state=None) -> VecEnvObs:
         for env_idx in range(self.num_envs):
-            obs = self.envs[env_idx].reset(state)
+            obs = self.envs[env_idx].reset(state, rand_state)
             self._save_obs(env_idx, obs)
         return self._obs_from_buf()
 

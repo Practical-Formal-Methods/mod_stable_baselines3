@@ -40,8 +40,8 @@ class VecCheckNan(VecEnvWrapper):
         self._observations = observations
         return observations, rewards, news, infos
 
-    def reset(self, state: Optional[list] = None) -> VecEnvObs:
-        observations = self.venv.reset(state)
+    def reset(self, state: Optional[list] = None, rand_state = None) -> VecEnvObs:
+        observations = self.venv.reset(state, rand_state)
         self._actions = None
 
         self._check_val(async_step=False, observations=observations)

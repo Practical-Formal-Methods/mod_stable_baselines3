@@ -57,7 +57,7 @@ class Monitor(gym.Wrapper):
         self.total_steps = 0
         self.current_reset_info = {}  # extra info about the current episode, that was passed in during reset()
 
-    def reset(self, state: Optional[list] = None, **kwargs) -> GymObs:
+    def reset(self, state: Optional[list] = None, rand_state: Optional[list] = None, **kwargs) -> GymObs:
         """
         Calls the Gym environment reset. Can only be called if the environment is over, or if allow_early_resets is True
 
@@ -76,7 +76,7 @@ class Monitor(gym.Wrapper):
             if value is None:
                 raise ValueError(f"Expected you to pass keyword argument {key} into reset")
             self.current_reset_info[key] = value
-        return self.env.reset(state, **kwargs)
+        return self.env.reset(state, rand_state, **kwargs)
 
     def step(self, action: Union[np.ndarray, int]) -> GymStepReturn:
         """
