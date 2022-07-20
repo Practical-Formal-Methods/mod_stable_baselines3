@@ -51,11 +51,11 @@ class VecFrameStack(VecEnvWrapper):
 
         return observations, rewards, dones, infos
 
-    def reset(self, state: Optional[list] = None) -> Union[np.ndarray, Dict[str, np.ndarray]]:
+    def reset(self, state: Optional[list] = None, rand_state: Optional[list] = None) -> Union[np.ndarray, Dict[str, np.ndarray]]:
         """
         Reset all environments
         """
-        observation = self.venv.reset(state)  # pytype:disable=annotation-type-mismatch
+        observation = self.venv.reset(state, rand_state)  # pytype:disable=annotation-type-mismatch
 
         observation = self.stackedobs.reset(observation)
         return observation

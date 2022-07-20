@@ -91,11 +91,11 @@ class VecTransposeImage(VecEnvWrapper):
 
         return self.transpose_observations(observations), rewards, dones, infos
 
-    def reset(self, state: Optional[list] = None) -> Union[np.ndarray, Dict]:
+    def reset(self, state: Optional[list] = None, rand_state: Optional[list] = None) -> Union[np.ndarray, Dict]:
         """
         Reset all environments
         """
-        return self.transpose_observations(self.venv.reset(state))
+        return self.transpose_observations(self.venv.reset(state, rand_state))
 
     def close(self) -> None:
         self.venv.close()

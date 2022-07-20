@@ -213,12 +213,12 @@ class VecNormalize(VecEnvWrapper):
         """
         return self.old_reward.copy()
 
-    def reset(self, state: Optional[int] = None) -> Union[np.ndarray, Dict[str, np.ndarray]]:
+    def reset(self, state: Optional[int] = None, rand_state: Optional[int] = None) -> Union[np.ndarray, Dict[str, np.ndarray]]:
         """
         Reset all environments
         :return: first observation of the episode
         """
-        obs = self.venv.reset(state)
+        obs = self.venv.reset(state, rand_state)
         self.old_obs = obs
         self.ret = np.zeros(self.num_envs)
         if self.training:
