@@ -267,7 +267,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             #     self.test(curseed, self.test_budget, update_guide=True)
             
             if not self.train_type == "normal" and self.num_timesteps % (2048 * 50) == 0:
-                self.env.guide_prob = min(self.env.guide_prob+0.15, 0.6)
+                self.env.guide_prob = min(self.env.guide_prob + self.guide_prob_inc, 0.6)
                 # fw = open(self.log_dir + "/bug_rew_RS%d.log" % self.seed, "a")
                 fw = open(self.log_dir + "/info.log", "a")
                 fw.write("Guide probability increased to %f.\n" % self.env.guide_prob)
@@ -287,17 +287,35 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
 
     def setup_test(self):
-        from lunar import Mutator, EnvWrapper
-        
-        game = EnvWrapper.Wrapper("lunar")
-        game.env = self.env
-        game.model = self.policy
-        self.game = game 
+        from lunar.Mutator import LunarOracleMoonHeightMutator
+        from lunar.EnvWrapper import Wrapper as LunarWrapper
+        from bipedal.Mutator import BipedalEasyOracleMutator
+        from bipedal.EnvWrapper import Wrapper as BipedalWrapper
+        from car_racing.Mutator import CarRacingRoadMutator
+        from car_racing.EnvWrapper import Wrapper as CarRacingWrapper
 
-        mutator = Mutator.LunarOracleMoonHeightMutator(game)
+        if self.env_iden == "lunar":
+            game = LunarWrapper(self.env_iden)
+            game.env = self.env
+            game.model = self.policy
+            self.game = game 
+            mutator = LunarOracleMoonHeightMutator(game)
+        elif self.env_iden == "bipedal":
+            game = BipedalWrapper(self.env_iden)
+            game.env = self.env
+            game.model = self.policy
+            self.game = game 
+            mutator = BipedalEasyOracleMutator(game)
+        elif self.env_iden == "car_racing":
+            game = CarRacingWrapper(self.env_iden)
+            game.env = self.env
+            game.model = self.policy
+            self.game = game 
+            mutator = CarRacingRoadMutator(game)
+
         rng = np.random.default_rng(self.seed)
 
-        poolfile= open("lunar/state_pool.p", 'rb')
+        poolfile= open("%s/state_pool.p" % self.env_iden, 'rb')
         pool = pickle.load(poolfile)
         self.pool = rng.choice(pool, self.explr_budget)
         self.testsuite = defaultdict(list)
@@ -345,11 +363,11 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         self.game.env.seed(self.seed)
         avg_rew = self.game.eval(eval_budget=30)
         self.env.last_avg_rew = avg_rew
-        alpha1, alpha2 = 10, 5
-        utility1 = alpha1 * (self.explr_budget * self.mut_budget - num_bugs) + avg_rew
-        utility2 = alpha2 * (self.explr_budget * self.mut_budget - num_bugs) + avg_rew
+        # alpha1, alpha2 = 10, 5
+        # utility1 = alpha1 * (self.explr_budget * self.mut_budget - num_bugs) + avg_rew
+        # utility2 = alpha2 * (self.explr_budget * self.mut_budget - num_bugs) + avg_rew
 
-        data_f.write("%d,%d,%f,%f,%f\n" % (self.num_timesteps, num_bugs, avg_rew, utility1, utility2))
+        data_f.write("%d,%d,%f,%f,%f\n" % (self.num_timesteps, num_bugs, avg_rew))
 
         # if cur_utility > self.utility:
         #     self.utility = cur_utility 
@@ -384,7 +402,8 @@ class OnPolicyAlgorithm(BaseAlgorithm):
     def explore(self):
         from lunar import Fuzzer, EnvWrapper
 
-        game = EnvWrapper.Wrapper("lunar")
+
+        game = EnvWrapper.Wrapper(self.env_iden)
         game.env = self.env
         game.model = self.policy
         game.action_space = range(self.env.action_space.n)
