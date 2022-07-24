@@ -34,7 +34,9 @@ class DummyVecEnv(VecEnv):
         self.buf_infos = [{} for _ in range(self.num_envs)]
         self.actions = None
         self.metadata = env.metadata
-        self.guide_prob = 0  # updated
+        self.guide_prob = 0  # updated in on_policy_algorithm.py
+        self.guide_rew  = 0  # updated in on_policy_algorithm.py
+
         self.guiding_states = list()  # filled in on_policy_algorithm.py
         self.all_guiding_states = list()  # filled in on_policy_algorithm.py
         self.all_guiding_st_idx = list()
@@ -55,7 +57,7 @@ class DummyVecEnv(VecEnv):
                 self.buf_infos[env_idx]["terminal_observation"] = obs
                 
                 # wait until guiding states filled
-                if not self.locked and self.rng.random() < self.guide_prob and self.last_avg_rew > 100:  # guide_prob set in myppo. it is set to 0 for normal training
+                if not self.locked and self.rng.random() < self.guide_prob and self.last_avg_rew > self.guide_rew:  # guide_prob set in myppo. it is set to 0 for normal training
                     if self.guiding_states:
                         guide_s_idx = self.rng.choice(range(len(self.guiding_states)))
                         _, rlx_state = self.guiding_states.pop(guide_s_idx)

@@ -316,7 +316,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         rng = np.random.default_rng(self.seed)
 
         poolfile= open("%s/state_pool.p" % self.env_iden, 'rb')
-        pool = pickle.load(poolfile)
+        pool = pickle.load(poolfile)[1]
         self.pool = rng.choice(pool, self.explr_budget)
         self.testsuite = defaultdict(list)
         for idx, org_state in enumerate(self.pool):
@@ -367,7 +367,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         # utility1 = alpha1 * (self.explr_budget * self.mut_budget - num_bugs) + avg_rew
         # utility2 = alpha2 * (self.explr_budget * self.mut_budget - num_bugs) + avg_rew
 
-        data_f.write("%d,%d,%f,%f,%f\n" % (self.num_timesteps, num_bugs, avg_rew))
+        data_f.write("%d,%d,%f\n" % (self.num_timesteps, num_bugs, avg_rew))
 
         # if cur_utility > self.utility:
         #     self.utility = cur_utility 

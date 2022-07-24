@@ -89,7 +89,7 @@ class MyPPO(OnPolicyAlgorithm):
         seed: Optional[int] = None,
         device: Union[th.device, str] = "auto",
         _init_setup_model: bool = True,
-        # guide_point: int = 2**19 + 2**18,
+        guide_rew: int = 100,  # 2**19 + 2**18,
         guide_prob_inc: float = 0.1,
         train_type: str = "normal",
         log_dir: str = "logs/",
@@ -127,6 +127,7 @@ class MyPPO(OnPolicyAlgorithm):
         
         self.train_type = train_type
         self.log_dir = log_dir
+        self.env.guide_rew = guide_rew  # used in dummy_vec_env.py
         self.guide_prob_inc = guide_prob_inc
         self.explr_budget = explr_budget
         self.mut_budget = mut_budget
