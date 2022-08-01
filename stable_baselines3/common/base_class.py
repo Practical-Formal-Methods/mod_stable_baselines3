@@ -225,8 +225,7 @@ class BaseAlgorithm(ABC):
             if wrap_with_vectranspose:
                 if verbose >= 1:
                     print("Wrapping the env in a VecTransposeImage.")
-                print("Skipping vectransoseimage env wrap")
-                # env = VecTransposeImage(env)
+                env = VecTransposeImage(env)
 
         return env
 
