@@ -341,14 +341,15 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 rlx_llvl = self.env.reset(rlx, org.rand_state)
                 o_rlx = self.game.play(rlx_llvl)
 
-                if o_org <= o_rlx: continue
+                if o_org <= o_rlx or (self.env_iden == "car_racing" and o_org-o_rlx < o_org*0.05): continue
 
-                org_llvl = self.env.reset(org.hi_lvl_state, org.rand_state)
-                o_org = self.game.play(org_llvl)
-                rlx_llvl = self.env.reset(rlx, org.rand_state)
-                o_rlx = self.game.play(rlx_llvl)
+                # org_llvl = self.env.reset(org.hi_lvl_state, org.rand_state)
+                # o_org = self.game.play(org_llvl)
+                # rlx_llvl = self.env.reset(rlx, org.rand_state)
+                # o_rlx = self.game.play(rlx_llvl)
 
-                if o_org > o_rlx:
+                # if o_org > o_rlx:
+                else:
                     if self.env_iden == "car_racing":
                         self.env.venv.guiding_states.append((org, rlx))
                         if org_idx not in self.env.venv.all_guiding_st_idx:
