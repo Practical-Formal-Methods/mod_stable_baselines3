@@ -60,6 +60,16 @@ class VecEnv(ABC):
         self.observation_space = observation_space
         self.action_space = action_space
 
+        # USED FOR GUIDED TRAINING
+        self.rng = None
+        self.guide_prob = 0  # updated in on_policy_algorithm.py
+        self.guide_rew  = 0  # updated in on_policy_algorithm.py
+        self.guiding_states = list()      # filled in on_policy_algorithm.py
+        self.all_guiding_states = list()  # filled in on_policy_algorithm.py
+        self.all_guiding_st_idx = list()  # filled in on_policy_algorithm.py
+        self.locked = False   # updated in on_policy_algorithm.py
+        self.last_avg_rew = 0 # updated in on_policy_algorithm.py
+    
     @abstractmethod
     def reset(self, state: Optional[int] = None, rand_state: Optional[int] = None) -> VecEnvObs:
         """

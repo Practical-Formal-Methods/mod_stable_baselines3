@@ -34,15 +34,6 @@ class DummyVecEnv(VecEnv):
         self.buf_infos = [{} for _ in range(self.num_envs)]
         self.actions = None
         self.metadata = env.metadata
-        self.guide_prob = 0  # updated in on_policy_algorithm.py
-        self.guide_rew  = 0  # updated in on_policy_algorithm.py
-
-        self.guiding_states = list()  # filled in on_policy_algorithm.py
-        self.all_guiding_states = list()  # filled in on_policy_algorithm.py
-        self.all_guiding_st_idx = list()
-        self.rng = None  # initialized in on_policy_algorithm.py
-        self.locked = False
-        self.last_avg_rew = 0
 
     def step_async(self, actions: np.ndarray) -> None:
         self.actions = actions
@@ -62,7 +53,7 @@ class DummyVecEnv(VecEnv):
                         guide_s_idx = self.rng.choice(range(len(self.guiding_states)))
                         _, rlx_state = self.guiding_states.pop(guide_s_idx)
                         obs = self.envs[env_idx].reset(rlx_state)
-                    elif self.all_guiding_states and self.rng.random() < self.guide_prob:
+                    elif self.all_guiding_states:  # and self.rng.random() < self.guide_prob:
                         _, rlx_state = self.rng.choice(self.all_guiding_states)
                         obs = self.envs[env_idx].reset(rlx_state)
                     else:
@@ -80,7 +71,7 @@ class DummyVecEnv(VecEnv):
             seeds.append(env.seed(seed + idx))
         return seeds
 
-    # works with mod_gym lunar and bipedal envs
+    # works with mod_gym lunar, bipedal and car_racing envs
     def reset(self, state=None, rand_state=None) -> VecEnvObs:
         for env_idx in range(self.num_envs):
             obs = self.envs[env_idx].reset(state, rand_state)

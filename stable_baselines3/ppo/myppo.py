@@ -127,7 +127,6 @@ class MyPPO(OnPolicyAlgorithm):
         
         self.train_type = train_type
         self.log_dir = log_dir
-        self.env.guide_rew = guide_rew  # used in dummy_vec_env.py
         self.guide_prob_inc = guide_prob_inc
         self.explr_budget = explr_budget
         self.mut_budget = mut_budget
@@ -139,8 +138,12 @@ class MyPPO(OnPolicyAlgorithm):
         ), "`batch_size` must be greater than 1. See https://github.com/DLR-RM/stable-baselines3/issues/440"
 
         if self.env is not None:
-            # self.env.guide_prob = guide_prob
-            self.env.rng = np.random.default_rng(self.seed)
+            if self.env_iden == "car_racing":
+                self.env.venv.rng = np.random.default_rng(self.seed)
+                self.env.venv.guide_rew = guide_rew  # used in dummy_vec_env.py
+            else:
+                self.env.rng = np.random.default_rng(self.seed)
+                self.env.guide_rew = guide_rew  # used in dummy_vec_env.py
 
             # Check that `n_steps * n_envs > 1` to avoid NaN
             # when doing advantage normalization

@@ -239,7 +239,6 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         callback.on_training_start(locals(), globals())
 
         while self.num_timesteps < total_timesteps:
-
             continue_training = self.collect_rollouts(self.env, callback, self.rollout_buffer, n_rollout_steps=self.n_steps)
 
             if continue_training is False:
@@ -261,10 +260,6 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 self.logger.dump(step=self.num_timesteps)
 
             self.train()
-            
-            # if self.num_timesteps > self.guide_point and self.num_timesteps % (2048 * 50) == 0:
-            #     curseed = self.num_timesteps
-            #     self.test(curseed, self.test_budget, update_guide=True)
             
             if not self.train_type == "normal" and self.num_timesteps % (2048 * 50) == 0:
                 self.env.guide_prob = min(self.env.guide_prob + self.guide_prob_inc, 0.6)
@@ -328,11 +323,15 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
     def test(self):
         info_f = open(self.log_dir + "/info.log", "a")
-        data_f = open(self.log_dir + "/bug_rew_%s_RS%d.log" % (self.train_type, self.seed), "a")
+        data_f = open(self.log_dir + "/bug_rew.log", "a")
 
-        # cur_all_b_size = len(self.env.all_guiding_states)
-        self.env.locked = True
-        self.env.guiding_states.clear()
+        if self.env_iden == "car_racing":
+            self.env.venv.locked = True
+            self.env.venv.guiding_states.clear()
+        else:
+            self.env.locked = True
+            self.env.guiding_states.clear()
+
         num_bugs = 0
         for org_idx, rlx_list in self.testsuite.items():
             org = self.pool[org_idx]
@@ -350,53 +349,37 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 o_rlx = self.game.play(rlx_llvl)
 
                 if o_org > o_rlx:
-                    self.env.guiding_states.append((org, rlx))
-                    if org_idx not in self.env.all_guiding_st_idx:
-                        self.env.all_guiding_states.append((org, rlx))
-                        self.env.all_guiding_st_idx.append(org_idx)
+                    if self.env_iden == "car_racing":
+                        self.env.venv.guiding_states.append((org, rlx))
+                        if org_idx not in self.env.venv.all_guiding_st_idx:
+                            self.env.venv.all_guiding_states.append((org, rlx))
+                            self.env.venv.all_guiding_st_idx.append(org_idx)
+                    else:
+                        self.env.guiding_states.append((org, rlx))
+                        if org_idx not in self.env.all_guiding_st_idx:
+                            self.env.all_guiding_states.append((org, rlx))
+                            self.env.all_guiding_st_idx.append(org_idx)
+
                     num_bugs += 1
-        
-        # if len(self.env.all_guiding_states) > cur_all_b_size:
-        #     cur_all_b_size = len(self.env.all_guiding_states) 
-        #     fw.write("Number of states found to be buggy so far is %d out of %d.\n" % (cur_all_b_size, self.explr_budget * self.mut_budget))
 
         self.game.env.seed(self.seed)
         avg_rew = self.game.eval(eval_budget=30)
-        self.env.last_avg_rew = avg_rew
-        # alpha1, alpha2 = 10, 5
-        # utility1 = alpha1 * (self.explr_budget * self.mut_budget - num_bugs) + avg_rew
-        # utility2 = alpha2 * (self.explr_budget * self.mut_budget - num_bugs) + avg_rew
+        if self.env_iden == "car_racing":
+            self.env.venv.last_avg_rew = avg_rew 
+        else:
+            self.env.last_avg_rew = avg_rew
 
         data_f.write("%d,%d,%f\n" % (self.num_timesteps, num_bugs, avg_rew))
-
-        # if cur_utility > self.utility:
-        #     self.utility = cur_utility 
-        #     fw.write("Better agent found with %d bugs and %f reward at %d timesteps.\n" % (num_bugs, avg_rew, self.num_timesteps))
         
         info_f.write("Current agent has %d bugs and %f reward at %d timesteps.\n" % (num_bugs, avg_rew, self.num_timesteps))
 
         info_f.close()
         data_f.close()
         
-        self.env.locked = False
-
-        # if num_bugs < self.best_bugs:
-        #     self.best_bugs = num_bugs
-        #     self.game.env.seed(self.seed)
-        #     avg_rew = self.game.eval(eval_budget=30)
-
-        #     fw.write("Better agent found with %d bugs and %f reward at %d timesteps.\n" % (num_bugs, avg_rew, self.num_timesteps))
-
-        #     self.best_rew_of_bb = avg_rew
-        # elif num_bugs == self.best_bugs:
-        #     self.game.env.seed(self.seed)
-        #     avg_rew = self.game.eval(eval_budget=30)
-
-        #     if avg_rew > self.best_rew_of_bb:
-        #         fw.write("Better agent found with %d bugs and %f reward at %d timesteps.\n" % (num_bugs, avg_rew, self.num_timesteps))
-
-        #         self.best_rew_of_bb = avg_rew
-
+        if self.env_iden == "car_racing":
+            self.env.venv.locked = False
+        else:
+            self.env.locked = False
 
 
     def explore(self):
