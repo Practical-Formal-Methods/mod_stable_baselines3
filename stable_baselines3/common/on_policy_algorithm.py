@@ -262,10 +262,15 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             self.train()
             
             if not self.train_type == "normal" and self.num_timesteps % (2048 * 50) == 0:
-                self.env.guide_prob = min(self.env.guide_prob + self.guide_prob_inc, 0.6)
-                # fw = open(self.log_dir + "/bug_rew_RS%d.log" % self.seed, "a")
                 fw = open(self.log_dir + "/info.log", "a")
-                fw.write("Guide probability increased to %f.\n" % self.env.guide_prob)
+
+                if self.env_iden == "car_racing":
+                    self.env.venv.guide_prob = min(self.env.venv.guide_prob + self.guide_prob_inc, 0.6)
+                    fw.write("Guide probability increased to %f.\n" % self.env.venv.guide_prob)
+                else:
+                    self.env.guide_prob = min(self.env.guide_prob + self.guide_prob_inc, 0.6)
+                    fw.write("Guide probability increased to %f.\n" % self.env.guide_prob)
+
                 fw.close()
 
             if self.num_timesteps % (2048 * 5) == 0:
@@ -379,8 +384,10 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         
         if self.env_iden == "car_racing":
             self.env.venv.locked = False
+            if avg_rew < self.env.venv.guide_rew: self.env.venv.guide_prob = 0
         else:
             self.env.locked = False
+            if avg_rew < self.env.guide_rew: self.env.guide_prob = 0
 
 
     def explore(self):
