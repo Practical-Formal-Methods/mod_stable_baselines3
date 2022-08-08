@@ -341,27 +341,27 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 rlx_llvl = self.env.reset(rlx, org.rand_state)
                 o_rlx = self.game.play(rlx_llvl)
 
-                if o_org <= o_rlx or (self.env_iden == "car_racing" and o_org-o_rlx < o_org*0.05): continue
+                #  quantitative bug - since no explicit winning or losing
+                if self.env_iden == "car_racing" and o_org > 150 and o_org-o_rlx > o_org*0.05:
+                    self.env.venv.guiding_states.append((org, rlx))
+                    if org_idx not in self.env.venv.all_guiding_st_idx:
+                        self.env.venv.all_guiding_states.append((org, rlx))
+                        self.env.venv.all_guiding_st_idx.append(org_idx)
+                    num_bugs += 1
+                    
+                # qualitative bug - win or crash
+                elif (self.env_iden == "bipedal" or self.env_iden == "lunar") and o_org > o_rlx:
+                    self.env.guiding_states.append((org, rlx))
+                    if org_idx not in self.env.all_guiding_st_idx:
+                        self.env.all_guiding_states.append((org, rlx))
+                        self.env.all_guiding_st_idx.append(org_idx)
+                    num_bugs += 1
 
                 # org_llvl = self.env.reset(org.hi_lvl_state, org.rand_state)
                 # o_org = self.game.play(org_llvl)
                 # rlx_llvl = self.env.reset(rlx, org.rand_state)
                 # o_rlx = self.game.play(rlx_llvl)
 
-                # if o_org > o_rlx:
-                else:
-                    if self.env_iden == "car_racing":
-                        self.env.venv.guiding_states.append((org, rlx))
-                        if org_idx not in self.env.venv.all_guiding_st_idx:
-                            self.env.venv.all_guiding_states.append((org, rlx))
-                            self.env.venv.all_guiding_st_idx.append(org_idx)
-                    else:
-                        self.env.guiding_states.append((org, rlx))
-                        if org_idx not in self.env.all_guiding_st_idx:
-                            self.env.all_guiding_states.append((org, rlx))
-                            self.env.all_guiding_st_idx.append(org_idx)
-
-                    num_bugs += 1
 
         self.game.env.seed(self.seed)
         avg_rew = self.game.eval(eval_budget=30)
