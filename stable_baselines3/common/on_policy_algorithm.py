@@ -261,19 +261,19 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
             self.train()
             
-            if not self.train_type == "normal" and self.num_timesteps % (2048 * 50) == 0:
+            if not self.train_type == "normal" and self.num_timesteps % (2048 * 60) == 0:
                 fw = open(self.log_dir + "/info.log", "a")
 
                 if self.env_iden == "car_racing":
-                    self.env.venv.guide_prob = min(self.env.venv.guide_prob + self.guide_prob_inc, 0.6)
+                    self.env.venv.guide_prob = min(self.env.venv.guide_prob + self.guide_prob_inc, 0.75)
                     fw.write("Guide probability increased to %f.\n" % self.env.venv.guide_prob)
                 else:
-                    self.env.guide_prob = min(self.env.guide_prob + self.guide_prob_inc, 0.6)
+                    self.env.guide_prob = min(self.env.guide_prob + self.guide_prob_inc, 0.75)
                     fw.write("Guide probability increased to %f.\n" % self.env.guide_prob)
 
                 fw.close()
 
-            if self.num_timesteps % (2048 * 5) == 0:
+            if self.num_timesteps % (2048 * 30) == 0:
                 self.test()
 
         callback.on_training_end()
@@ -371,23 +371,25 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         self.game.env.seed(self.seed)
         avg_rew = self.game.eval(eval_budget=30)
         if self.env_iden == "car_racing":
+            g_prob = self.env.venv.guide_prob
             self.env.venv.last_avg_rew = avg_rew 
+            if avg_rew < self.env.venv.guide_rew: self.env.venv.guide_prob = 0
         else:
+            g_prob = self.env.guide_prob
             self.env.last_avg_rew = avg_rew
+            if avg_rew < self.env.guide_rew: self.env.guide_prob = 0
 
-        data_f.write("%d,%d,%f\n" % (self.num_timesteps, num_bugs, avg_rew))
+        data_f.write("%d,%d,%f,%f\n" % (self.num_timesteps, num_bugs, avg_rew, g_prob))
         
-        info_f.write("Current agent has %d bugs and %f reward at %d timesteps.\n" % (num_bugs, avg_rew, self.num_timesteps))
+        info_f.write("Current agent has %d bugs and %f reward at %d timesteps. Guide prob. was %f.\n" % (num_bugs, avg_rew, self.num_timesteps, g_prob))
 
         info_f.close()
         data_f.close()
         
         if self.env_iden == "car_racing":
             self.env.venv.locked = False
-            if avg_rew < self.env.venv.guide_rew: self.env.venv.guide_prob = 0
         else:
             self.env.locked = False
-            if avg_rew < self.env.guide_rew: self.env.guide_prob = 0
 
 
     def explore(self):
