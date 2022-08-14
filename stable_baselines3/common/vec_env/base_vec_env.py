@@ -67,6 +67,7 @@ class VecEnv(ABC):
         self.guiding_states = list()      # filled in on_policy_algorithm.py
         self.all_guiding_states = list()  # filled in on_policy_algorithm.py
         self.all_guiding_st_idx = list()  # filled in on_policy_algorithm.py
+        self.all_guiding_st_weights = list()  # filled in on_policy_algorithm.py
         self.locked = False   # updated in on_policy_algorithm.py
         self.last_avg_rew = 0 # updated in on_policy_algorithm.py
     

@@ -50,11 +50,17 @@ class DummyVecEnv(VecEnv):
                 # wait until guiding states filled
                 if not self.locked and self.rng.random() < self.guide_prob and self.last_avg_rew > self.guide_rew:  # guide_prob set in myppo. it is set to 0 for normal training
                     if self.guiding_states:
-                        guide_s_idx = self.rng.choice(range(len(self.guiding_states)))
-                        _, rlx_state = self.guiding_states.pop(guide_s_idx)
+                        guide_st_idx = self.rng.choice(range(len(self.guiding_states)))
+                        _, rlx_state = self.guiding_states.pop(guide_st_idx)
                         obs = self.envs[env_idx].reset(rlx_state)
                     elif self.all_guiding_states:  # and self.rng.random() < self.guide_prob:
-                        _, rlx_state = self.rng.choice(self.all_guiding_states)
+                        weight_sum = sum(self.all_guiding_st_weights)
+                        weights_norm = [raw_weight/weight_sum for raw_weight in self.all_guiding_st_weights]
+                        guide_st_idx = self.rng.choice(range(len(self.all_guiding_states)), p=weights_norm)
+                        
+                        self.all_guiding_st_weights[guide_st_idx] *= 0.9
+
+                        _, rlx_state = self.all_guiding_states[guide_st_idx]
                         obs = self.envs[env_idx].reset(rlx_state)
                     else:
                         obs = self.envs[env_idx].reset()

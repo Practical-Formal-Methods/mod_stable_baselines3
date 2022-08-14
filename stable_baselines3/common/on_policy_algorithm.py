@@ -365,6 +365,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                     if org_idx not in self.env.venv.all_guiding_st_idx:
                         self.env.venv.all_guiding_states.append((org, rlx))
                         self.env.venv.all_guiding_st_idx.append(org_idx)
+                        self.env.venv.all_guiding_st_weights.append(1)
                     num_bugs += 1
                     
                 # qualitative bug - win or crash
@@ -373,6 +374,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                     if org_idx not in self.env.all_guiding_st_idx:
                         self.env.all_guiding_states.append((org, rlx))
                         self.env.all_guiding_st_idx.append(org_idx)
+                        self.env.all_guiding_st_weights.append(1)
                     num_bugs += 1
 
         if self.env_iden == "car_racing":
