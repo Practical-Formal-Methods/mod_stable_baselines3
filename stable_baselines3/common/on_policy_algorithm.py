@@ -261,7 +261,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
             self.train()
             
-            if not self.train_type == "normal" and self.num_timesteps % (2048 * 60) == 0:
+            if not self.train_type == "normal" and self.num_timesteps % (2048 * 50) == 0:
                 
                 self.game.env.seed(self.seed)
                 avg_rew = self.game.eval(eval_budget=30)
@@ -271,17 +271,22 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 if self.env_iden == "car_racing":
                     self.env.venv.last_avg_rew = avg_rew 
                     if avg_rew > self.env.venv.guide_rew:
-                        self.env.venv.guide_prob = min(self.env.venv.guide_prob + self.guide_prob_inc, 0.75)
+                        self.env.venv.guide_prob = min(self.env.venv.guide_prob + self.guide_prob_inc, 0.6)
+                    else:
+                        self.env.venv.guide_prob = max(0, self.env.venv.guide_prob - self.guide_prob_inc)
                     fw.write("New guide probability is %f.\n" % self.env.venv.guide_prob)
                 else:
                     self.env.last_avg_rew = avg_rew
                     if avg_rew > self.env.guide_rew:
-                        self.env.guide_prob = min(self.env.guide_prob + self.guide_prob_inc, 0.75)
+                        self.env.guide_prob = min(self.env.guide_prob + self.guide_prob_inc, 0.6)
+                    else:
+                        self.env.guide_prob = max(0, self.env.guide_prob - self.guide_prob_inc)
+
                     fw.write("New guide probability is %f.\n" % self.env.guide_prob)
 
                 fw.close()
 
-            if self.num_timesteps % (2048 * 30) == 0:
+            if self.num_timesteps % (2048 * 25) == 0:
                 self.test()
 
         callback.on_training_end()
@@ -330,7 +335,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         for idx, org_state in enumerate(self.pool):
             org_state = org_state.hi_lvl_state
             for _ in range(self.mut_budget):
-                rlx_state = mutator.mutate(org_state, rng, 'relax')
+                rlx_state = mutator.mutate(org_state, rng, 'unrelax')  # RELAX OR UNRELAX ? !!!!!!!
                 self.testsuite[idx].append(rlx_state)
 
 
@@ -354,8 +359,8 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 rlx_llvl = self.env.reset(rlx, org.rand_state)
                 o_rlx = self.game.play(rlx_llvl)
 
-                #  quantitative bug - since no explicit winning or losing
-                if self.env_iden == "car_racing" and o_org > 150 and o_org-o_rlx > o_org*0.05:
+                #  quantitative bug - since no explicit winning or losing, org > orlx since minus rewards
+                if self.env_iden == "car_racing" and o_org > o_rlx and o_org-o_rlx > o_org*0.05:
                     self.env.venv.guiding_states.append((org, rlx))
                     if org_idx not in self.env.venv.all_guiding_st_idx:
                         self.env.venv.all_guiding_states.append((org, rlx))
