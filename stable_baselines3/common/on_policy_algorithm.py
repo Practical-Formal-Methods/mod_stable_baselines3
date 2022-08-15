@@ -271,14 +271,14 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 if self.env_iden == "car_racing":
                     self.env.venv.last_avg_rew = avg_rew 
                     if avg_rew > self.env.venv.guide_rew:
-                        self.env.venv.guide_prob = min(self.env.venv.guide_prob + self.guide_prob_inc, 0.72)
+                        self.env.venv.guide_prob = min(self.env.venv.guide_prob + self.guide_prob_inc, self.guide_prob_thold)
                     else:
                         self.env.venv.guide_prob = max(0, self.env.venv.guide_prob - self.guide_prob_inc)
                     fw.write("New guide probability is %f.\n" % self.env.venv.guide_prob)
                 else:
                     self.env.last_avg_rew = avg_rew
                     if avg_rew > self.env.guide_rew:
-                        self.env.guide_prob = min(self.env.guide_prob + self.guide_prob_inc, 0.72)
+                        self.env.guide_prob = min(self.env.guide_prob + self.guide_prob_inc, self.guide_prob_thold)
                     else:
                         self.env.guide_prob = max(0, self.env.guide_prob - self.guide_prob_inc)
 
