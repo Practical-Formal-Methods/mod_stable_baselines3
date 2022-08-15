@@ -261,7 +261,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
             self.train()
             
-            if not self.train_type == "normal" and self.num_timesteps % (2048 * 50) == 0:
+            if not self.train_type == "normal" and self.num_timesteps % (2048 * 60) == 0:
                 
                 self.game.env.seed(self.seed)
                 avg_rew = self.game.eval(eval_budget=30)
@@ -271,14 +271,14 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 if self.env_iden == "car_racing":
                     self.env.venv.last_avg_rew = avg_rew 
                     if avg_rew > self.env.venv.guide_rew:
-                        self.env.venv.guide_prob = min(self.env.venv.guide_prob + self.guide_prob_inc, 0.6)
+                        self.env.venv.guide_prob = min(self.env.venv.guide_prob + self.guide_prob_inc, 0.72)
                     else:
                         self.env.venv.guide_prob = max(0, self.env.venv.guide_prob - self.guide_prob_inc)
                     fw.write("New guide probability is %f.\n" % self.env.venv.guide_prob)
                 else:
                     self.env.last_avg_rew = avg_rew
                     if avg_rew > self.env.guide_rew:
-                        self.env.guide_prob = min(self.env.guide_prob + self.guide_prob_inc, 0.6)
+                        self.env.guide_prob = min(self.env.guide_prob + self.guide_prob_inc, 0.72)
                     else:
                         self.env.guide_prob = max(0, self.env.guide_prob - self.guide_prob_inc)
 
@@ -286,7 +286,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
                 fw.close()
 
-            if self.num_timesteps % (2048 * 25) == 0:
+            if self.num_timesteps % (2048 * 20) == 0:
                 self.test()
 
         callback.on_training_end()
@@ -331,12 +331,17 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         poolfile= open("%s/state_pool.p" % self.env_iden, 'rb')
         pool = pickle.load(poolfile)[1]
         self.pool = rng.choice(pool, self.explr_budget)
-        self.testsuite = defaultdict(list)
-        for idx, org_state in enumerate(self.pool):
-            org_state = org_state.hi_lvl_state
-            for _ in range(self.mut_budget):
-                rlx_state = mutator.mutate(org_state, rng, 'unrelax')  # RELAX OR UNRELAX ? !!!!!!!
-                self.testsuite[idx].append(rlx_state)
+        self.testsuite = []  # defaultdict(list)
+        for org_idx, org in enumerate(self.pool):
+            org_state = org.hi_lvl_state
+            # for _ in range(self.mut_budget):
+            if org_idx % 2 == 0:
+                rlx_state = mutator.mutate(org_state, rng, 'relax')
+                self.testsuite.append([org_idx, rlx_state, 'rlx'])
+                # self.testsuite[idx].append(rlx_state)
+            else:
+                unrlx_state = mutator.mutate(org_state, rng, 'unrelax')
+                self.testsuite.append([org_idx, unrlx_state, 'unrlx'])
 
 
     def test(self):
@@ -351,31 +356,43 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             g_prob = self.env.guide_prob
 
         num_bugs = 0
-        for org_idx, rlx_list in self.testsuite.items():
+        for org_idx, mut_st, mut_type in self.testsuite:  # .items():
             org = self.pool[org_idx]
-            for rlx in rlx_list:
-                org_llvl = self.env.reset(org.hi_lvl_state, org.rand_state)
-                o_org = self.game.play(org_llvl)
-                rlx_llvl = self.env.reset(rlx, org.rand_state)
-                o_rlx = self.game.play(rlx_llvl)
+            # for rlx in rlx_list:
+            org_llvl = self.env.reset(org.hi_lvl_state, org.rand_state)
+            o_org = self.game.play(org_llvl)
+            mut_llvl = self.env.reset(mut_st, org.rand_state)
+            o_mut = self.game.play(mut_llvl)
 
-                #  quantitative bug - since no explicit winning or losing, org > orlx since minus rewards
-                if self.env_iden == "car_racing" and o_org > o_rlx and o_org-o_rlx > o_org*0.05:
-                    self.env.venv.guiding_states.append((org, rlx))
-                    if org_idx not in self.env.venv.all_guiding_st_idx:
-                        self.env.venv.all_guiding_states.append((org, rlx))
-                        self.env.venv.all_guiding_st_idx.append(org_idx)
-                        self.env.venv.all_guiding_st_weights.append(1)
-                    num_bugs += 1
-                    
-                # qualitative bug - win or crash
-                elif (self.env_iden == "bipedal" or self.env_iden == "lunar") and o_org > o_rlx:
-                    self.env.guiding_states.append((org, rlx))
-                    if org_idx not in self.env.all_guiding_st_idx:
-                        self.env.all_guiding_states.append((org, rlx))
-                        self.env.all_guiding_st_idx.append(org_idx)
-                        self.env.all_guiding_st_weights.append(1)
-                    num_bugs += 1
+            #  quantitative bug - since no explicit winning or losing
+            if self.env_iden == "car_racing" and mut_type == 'rlx' and o_org-o_mut > abs(o_org*0.05):
+                self.env.venv.guiding_states.append(mut_st)
+                # if org_idx not in self.env.venv.all_guiding_st_idx:
+                self.env.venv.all_guiding_states.append(mut_st)
+                self.env.venv.all_guiding_st_idx.append(org_idx)
+                self.env.venv.all_guiding_st_weights.append(1)
+                num_bugs += 1
+            elif self.env_iden == "car_racing" and mut_type == 'unrlx' and o_mut-o_org > abs(o_mut*0.05):
+                self.env.venv.guiding_states.append(org.hi_lvl_state)
+                if org_idx not in self.env.venv.all_guiding_st_idx:
+                    self.env.venv.all_guiding_states.append(org.hi_lvl_state)
+                    self.env.venv.all_guiding_st_idx.append(org_idx)
+                    self.env.venv.all_guiding_st_weights.append(1)
+                num_bugs += 1
+            # qualitative bug - win or crash
+            elif (self.env_iden == "bipedal" or self.env_iden == "lunar") and mut_type == 'rlx' and o_org > o_mut:
+                self.env.guiding_states.append(mut_st)
+                self.env.all_guiding_states.append(mut_st)
+                self.env.all_guiding_st_idx.append(org_idx)
+                self.env.all_guiding_st_weights.append(1)
+                num_bugs += 1
+            elif (self.env_iden == "bipedal" or self.env_iden == "lunar") and mut_type == 'unrlx' and o_org > o_mut:
+                self.env.guiding_states.append(org.hi_lvl_state)
+                if org_idx not in self.env.all_guiding_st_idx:
+                    self.env.all_guiding_states.append(org.hi_lvl_state)
+                    self.env.all_guiding_st_idx.append(org_idx)
+                    self.env.all_guiding_st_weights.append(1)
+                num_bugs += 1
 
         if self.env_iden == "car_racing":
             self.env.venv.locked = False

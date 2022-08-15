@@ -94,7 +94,7 @@ class MyPPO(OnPolicyAlgorithm):
         train_type: str = "normal",
         log_dir: str = "logs/",
         explr_budget: int = 800,
-        mut_budget: int = 2,
+        # mut_budget: int = 2,
         env_iden: str = "lunar",
     ):
 
@@ -129,7 +129,7 @@ class MyPPO(OnPolicyAlgorithm):
         self.log_dir = log_dir
         self.guide_prob_inc = guide_prob_inc
         self.explr_budget = explr_budget
-        self.mut_budget = mut_budget
+        # self.mut_budget = mut_budget
         self.env_iden = env_iden
         # Sanity check, otherwise it will lead to noisy gradient and NaN
         # because of the advantage normalization
