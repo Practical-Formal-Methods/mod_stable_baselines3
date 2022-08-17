@@ -261,7 +261,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
             self.train()
             
-            if not self.train_type == "normal" and self.num_timesteps % (2048 * 60) == 0:
+            if not self.train_type == "normal" and self.num_timesteps % (2048 * 200) == 0:
                 
                 self.game.env.seed(self.seed)
                 avg_rew = self.game.eval(eval_budget=30)
@@ -286,7 +286,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
                 fw.close()
 
-            if self.num_timesteps % (2048 * 20) == 0:
+            if self.num_timesteps % (2048 * 200) == 0:
                 self.test()
 
         callback.on_training_end()
@@ -355,7 +355,8 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             self.env.guiding_states.clear()
             g_prob = self.env.guide_prob
 
-        num_bugs = 0
+        num_rlx_bugs = 0
+        num_unrlx_bugs = 0
         for org_idx, mut_st, mut_type in self.testsuite:  # .items():
             org = self.pool[org_idx]
             # for rlx in rlx_list:
@@ -371,28 +372,28 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 self.env.venv.all_guiding_states.append(mut_st)
                 self.env.venv.all_guiding_st_idx.append(org_idx)
                 self.env.venv.all_guiding_st_weights.append(1)
-                num_bugs += 1
+                num_rlx_bugs += 1
             elif self.env_iden == "car_racing" and mut_type == 'unrlx' and o_mut-o_org > abs(o_mut*0.05):
                 self.env.venv.guiding_states.append(org.hi_lvl_state)
                 if org_idx not in self.env.venv.all_guiding_st_idx:
                     self.env.venv.all_guiding_states.append(org.hi_lvl_state)
                     self.env.venv.all_guiding_st_idx.append(org_idx)
                     self.env.venv.all_guiding_st_weights.append(1)
-                num_bugs += 1
+                num_unrlx_bugs += 1
             # qualitative bug - win or crash
             elif (self.env_iden == "bipedal" or self.env_iden == "lunar") and mut_type == 'rlx' and o_org > o_mut:
                 self.env.guiding_states.append(mut_st)
                 self.env.all_guiding_states.append(mut_st)
                 self.env.all_guiding_st_idx.append(org_idx)
                 self.env.all_guiding_st_weights.append(1)
-                num_bugs += 1
+                num_rlx_bugs += 1
             elif (self.env_iden == "bipedal" or self.env_iden == "lunar") and mut_type == 'unrlx' and o_org > o_mut:
                 self.env.guiding_states.append(org.hi_lvl_state)
                 if org_idx not in self.env.all_guiding_st_idx:
                     self.env.all_guiding_states.append(org.hi_lvl_state)
                     self.env.all_guiding_st_idx.append(org_idx)
                     self.env.all_guiding_st_weights.append(1)
-                num_bugs += 1
+                num_unrlx_bugs += 1
 
         if self.env_iden == "car_racing":
             self.env.venv.locked = False
@@ -402,16 +403,18 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         self.game.env.seed(self.seed)
         avg_rew = self.game.eval(eval_budget=30)
 
+        num_tot_bugs = num_rlx_bugs + num_unrlx_bugs
+
         info_f = open(self.log_dir + "/info.log", "a")
         data_f = open(self.log_dir + "/bug_rew.log", "a")
 
-        data_f.write("%d,%d,%f,%f\n" % (self.num_timesteps, num_bugs, avg_rew, g_prob))
-        info_f.write("Current agent has %d bugs and %f reward at %d timesteps. Guide prob. was %f.\n" % (num_bugs, avg_rew, self.num_timesteps, g_prob))
+        data_f.write("%d,%d,%f,%f\n" % (self.num_timesteps, num_tot_bugs, avg_rew, g_prob))
+        info_f.write("Current agent has %d + %d = %d bugs and %f reward at %d timesteps. Guide prob. was %f.\n" % (num_rlx_bugs, num_unrlx_bugs,num_tot_bugs, avg_rew, self.num_timesteps, g_prob))
 
         info_f.close()
         data_f.close()
-        
 
+        
     def explore(self):
         from lunar import Fuzzer, EnvWrapper
 
@@ -442,63 +445,3 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
         #fuzzer_summary = open("fuzzer_pool_1h_guide_train.p", "wb")
         #pickle.dump(self.fuzzer.pool, fuzzer_summary)
-
-    def old_test(self):
-
-        poolfile= open("fuzzer_pool_1h_guide_train.p", 'rb')
-        pool = pickle.load(poolfile)
-        
-        from lunar import Mutator, EnvWrapper
-        game = EnvWrapper.Wrapper("lunar")
-        game.env = self.env
-        game.model = self.policy
-
-        mutator = Mutator.LunarOracleMoonHeightMutator(game)
-        rng = np.random.default_rng(self.seed)
-
-        confirmation_budget = 5
-
-        test_budget = self.test_budget
-        self.env.guiding_states.clear()
-
-        fw = open("mylog_%d" % self.seed, "w")
-        num_bugs = 0
-        all_org, all_rlx = 0, 0
-        while test_budget > 0:
-            org_state = rng.choice(pool)
-            org_state = org_state.hi_lvl_state
-            rlx_state = mutator.mutate(org_state, rng, 'relax')
-
-            o_org, o_rlx = 0, 0
-            
-            # dummy_vec_env reset is modified
-            for _ in range(confirmation_budget):
-                org_llvl_state = self.env.reset(org_state)
-                o_org += game.rollout(org_llvl_state)
-
-            # dummy_vec_env reset is modified
-            for _ in range(confirmation_budget):
-                rlx_llvl_state = self.env.reset(rlx_state)
-                o_rlx += game.rollout(rlx_llvl_state)
-
-            if o_org > o_rlx:
-                # guided states declared in DummyVecEnv class where step (step_wait) is implemented
-                self.env.guiding_states.append((org_state, rlx_state))
-                print("BUG FOUND! O_ORG:%d, O_RLX:%d" % (o_org, o_rlx))
-                #fw.write("BUG FOUND! O_ORG:%d, O_RLX:%d\n" % (o_org, o_rlx))
-
-                all_org += o_org
-                all_rlx += o_rlx
-
-                num_bugs += 1
-
-            if test_budget % 500 == 0:
-                print("Remaining test budget: ", int(test_budget))
-            
-            test_budget -= 1
-
-        fw.write("Total win org: %d, Total win rlx: %d\n" % (all_org, all_rlx))
-        fw.write("%d bugs found.\n\n" % num_bugs)
-
-        test_out = open("train_lunar/bug_states_GP%d_GPR%f_RS%d_TB%d_1H_fuzz.p" % (self.guide_point, self.env.guide_prob, self.seed, self.test_budget), "wb")
-        pickle.dump(self.env.guiding_states, test_out)

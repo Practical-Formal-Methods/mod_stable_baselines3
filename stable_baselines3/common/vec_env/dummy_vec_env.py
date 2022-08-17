@@ -48,7 +48,8 @@ class DummyVecEnv(VecEnv):
                 self.buf_infos[env_idx]["terminal_observation"] = obs
                 
                 # wait until guiding states filled
-                if not self.locked and self.rng.random() < self.guide_prob and self.last_avg_rew > self.guide_rew:  # guide_prob set in myppo. it is set to 0 for normal training
+                # guide_prob set in myppo. it is set to 0 for normal training
+                if not self.locked and self.rng.random() < self.guide_prob:  # and self.last_avg_rew > self.guide_rew:
                     if self.guiding_states:
                         guide_st_idx = self.rng.choice(range(len(self.guiding_states)))
                         guide_st = self.guiding_states.pop(guide_st_idx)
