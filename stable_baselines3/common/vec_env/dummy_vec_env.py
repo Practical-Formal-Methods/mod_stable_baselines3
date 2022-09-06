@@ -67,7 +67,7 @@ class DummyVecEnv(VecEnv):
                         obs = self.envs[env_idx].reset()
                 else:
                     obs = self.envs[env_idx].reset()
-
+                    self.normal_init_states.append(obs)
 
             self._save_obs(env_idx, obs)
         return (self._obs_from_buf(), np.copy(self.buf_rews), np.copy(self.buf_dones), deepcopy(self.buf_infos))
