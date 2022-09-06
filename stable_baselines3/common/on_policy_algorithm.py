@@ -14,7 +14,7 @@ from mod_stable_baselines3.stable_baselines3.common.buffers import DictRolloutBu
 from mod_stable_baselines3.stable_baselines3.common.callbacks import BaseCallback
 from mod_stable_baselines3.stable_baselines3.common.policies import ActorCriticPolicy, BasePolicy
 from mod_stable_baselines3.stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedule
-from mod_stable_baselines3.stable_baselines3.common.utils import obs_as_tensor, safe_mean
+from mod_stable_baselines3.stable_baselines3.common.utils import obs_as_tensor, safe_mean, hellinger, get_partitions
 from mod_stable_baselines3.stable_baselines3.common.vec_env import VecEnv
 
 
@@ -294,6 +294,8 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
         callback.on_training_end()
 
+        self.post_train()
+
         return self
 
     def _get_torch_save_params(self) -> Tuple[List[str], List[str]]:
@@ -347,16 +349,25 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 if unrlx_state is not None:
                     self.testsuite.append([org_idx, unrlx_state, 'unrlx'])
 
+        self.all_gstates_by_test = []
+        self.all_nstates_by_test = []
+
 
     def test(self):
+
+        if self.env.guiding_states and self.env.normal_init_states:
+            self.all_gstates_by_test.append(self.env.guiding_states)
+            self.all_nstates_by_test.append(self.env.normal_init_states)
 
         if self.env_iden == "car_racing":
             self.env.venv.locked = True
             self.env.venv.guiding_states.clear()
+            self.env.venv.normal_init_states.clear()
             g_prob = self.env.venv.guide_prob
         else:
             self.env.locked = True
             self.env.guiding_states.clear()
+            self.env.normal_init_states.clear()
             g_prob = self.env.guide_prob
 
         num_rlx_bugs = 0
@@ -415,7 +426,56 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         info_f.close()
         data_f.close()
 
+
+    def post_train(self):
+        all_guide_inits  = np.asarray(self.all_gstates_by_test)
+        all_normal_inits = np.asarray(self.all_nstates_by_test)
+
+        guide_max = np.amax(all_guide_inits, axis=(0,1))
+        guide_min = np.amin(all_guide_inits, axis=(0,1))
+
+        normal_max = np.amax(all_normal_inits, axis=(0,1))
+        normal_min = np.amin(all_normal_inits, axis=(0,1))
+
+        feature_max, feature_min = [], []
+        for i in range(all_guide_inits.shape[-1]):
+            feature_max.append(max(guide_max[i], normal_max[i]))
+            feature_min.append(min(guide_min[i], normal_min[i]))
+
+        # Calculate all hashes 
+        cov_hash = {}
+        num_unq_partitions = 0
+        all_guide_cov_distribution = []
+        for inits in np.concatenate((all_guide_inits, all_normal_inits)):  # default axis is 0
+            for init in inits:
+                partn_arr = get_partitions(init, feature_min, feature_max, n_part=4)
+                if partn_arr not in cov_hash:
+                    cov_hash[partn_arr] = num_unq_partitions
+                    num_unq_partitions += 1
         
+        # Find coverage dist. of normal inits
+        all_normal_cov_distribution = []
+        for normal_inits in all_normal_inits:
+            cov_dist = np.zeros(num_unq_partitions)
+            for ninit in normal_inits:
+                partn_arr = get_partitions(ninit, feature_min, feature_max, n_part=4)
+                cov_dist[cov_hash[partn_arr]] += 1
+            all_normal_cov_distribution.append(cov_dist)
+
+        # Find coverage dist. of guiding inits
+        all_guide_cov_distribution = []
+        for guide_inits in all_guide_inits:
+            cov_dist = np.zeros(num_unq_partitions)
+            for ginit in guide_inits:
+                partn_arr = get_partitions(ginit, feature_min, feature_max, n_part=4)
+                cov_dist[cov_hash[partn_arr]] += 1
+            all_guide_cov_distribution.append(cov_dist)
+
+        guide_cov = open("guide_cov_dist.p", "wb")
+        normal_cov = open("normal_cov_dist.p", "wb")
+        pickle.dump(all_guide_cov_distribution, guide_cov)
+        pickle.dump(all_normal_cov_distribution, normal_cov)
+
     def explore(self):
         from lunar import Fuzzer, EnvWrapper
 

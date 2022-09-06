@@ -461,3 +461,25 @@ def should_collect_more_steps(
             "The unit of the `train_freq` must be either TrainFrequencyUnit.STEP "
             f"or TrainFrequencyUnit.EPISODE not '{train_freq.unit}'!"
         )
+
+def hellinger(p, q):
+  # distance between p an d
+  # p and q are np array probability distributions
+  n = len(p)
+  sum = 0.0
+  for i in range(n):
+    sum += (np.sqrt(p[i]) - np.sqrt(q[i]))**2
+  result = (1.0 / np.sqrt(2.0)) * np.sqrt(sum)
+
+  return result
+
+
+def get_partitions(inp, min_arr, max_arr, n_part=4):
+    cov_arr = []
+    for i in range(inp):
+        cov_part = ( (inp[i] - min_arr[i]) / (max_arr[i] - min_arr[i]) ) * n_part
+        cov_part = int(cov_part)
+
+        cov_arr.append(cov_part)
+    
+    return cov_arr
