@@ -14,7 +14,7 @@ from mod_stable_baselines3.stable_baselines3.common.buffers import DictRolloutBu
 from mod_stable_baselines3.stable_baselines3.common.callbacks import BaseCallback
 from mod_stable_baselines3.stable_baselines3.common.policies import ActorCriticPolicy, BasePolicy
 from mod_stable_baselines3.stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedule
-from mod_stable_baselines3.stable_baselines3.common.utils import obs_as_tensor, safe_mean, hellinger, get_partitions
+from mod_stable_baselines3.stable_baselines3.common.utils import obs_as_tensor, safe_mean, hellinger, get_partitions, flatten_state
 from mod_stable_baselines3.stable_baselines3.common.vec_env import VecEnv
 
 
@@ -356,8 +356,11 @@ class OnPolicyAlgorithm(BaseAlgorithm):
     def test(self):
 
         if self.env.guiding_states and self.env.normal_init_states:
-            self.all_gstates_by_test.append(self.env.guiding_states)
-            self.all_nstates_by_test.append(self.env.normal_init_states)
+            flat_gstates = flatten_state(self.env.guiding_states)
+            flat_nstates = flatten_state(self.env.normal_init_states)
+
+            self.all_gstates_by_test.append(flat_gstates)
+            self.all_nstates_by_test.append(flat_nstates)
 
         if self.env_iden == "car_racing":
             self.env.venv.locked = True

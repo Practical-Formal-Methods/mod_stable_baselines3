@@ -483,3 +483,17 @@ def get_partitions(inp, min_arr, max_arr, n_part=4):
         cov_arr.append(cov_part)
     
     return cov_arr
+
+def flatten_state(state):
+    lander_pos, lander_vel, lander_angle, lander_ang_vel, \
+                lleg_contact, rleg_contact, lleg_angle, rleg_angle, \
+                lleg_angvel, rleg_angvel, lleg_lvel, rleg_lvel, \
+                lleg_pos, rleg_pos, height = state
+    
+    flat_state = [lander_pos[0], lander_pos[1], lander_vel[0], lander_vel[1], lander_angle, lander_ang_vel, lleg_angle, rleg_angle, lleg_angvel, rleg_angvel, lleg_lvel[0], lleg_lvel[1], rleg_lvel[0], rleg_lvel[1], lleg_pos[0], lleg_pos[1], rleg_pos[0], rleg_pos[1]]
+
+    flat_state = flat_state + height
+
+    flat_state = np.asarray(flat_state)
+
+    return flat_state
