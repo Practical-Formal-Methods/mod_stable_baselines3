@@ -260,12 +260,18 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 self.logger.dump(step=self.num_timesteps)
 
             self.train()
-            
-            if not self.train_type == "normal" and self.num_timesteps % (2048 * 200) == 0:
-                
+
+
+            if self.num_timesteps % (2048 * 30) == 0:
+                self.test()
+
+            # we put it here to keep guided and normal the same
+            if self.num_timesteps % (2048 * 60) == 0:
                 self.game.env.seed(self.seed)
                 avg_rew = self.game.eval(eval_budget=30)
 
+            if not self.train_type == "normal" and self.num_timesteps % (2048 * 60) == 0:
+                
                 fw = open(self.log_dir + "/info.log", "a")
 
                 if self.env_iden == "car_racing":
@@ -285,9 +291,6 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                     fw.write("New guide probability is %f.\n" % self.env.guide_prob)
 
                 fw.close()
-
-            if self.num_timesteps % (2048 * 200) == 0:
-                self.test()
 
         callback.on_training_end()
 
@@ -341,7 +344,8 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 # self.testsuite[idx].append(rlx_state)
             else:
                 unrlx_state = mutator.mutate(org_state, rng, 'unrelax')
-                self.testsuite.append([org_idx, unrlx_state, 'unrlx'])
+                if unrlx_state is not None:
+                    self.testsuite.append([org_idx, unrlx_state, 'unrlx'])
 
 
     def test(self):
@@ -368,13 +372,12 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             #  quantitative bug - since no explicit winning or losing
             if self.env_iden == "car_racing" and mut_type == 'rlx' and o_org-o_mut > abs(o_org*0.05):
                 self.env.venv.guiding_states.append(mut_st)
-                # if org_idx not in self.env.venv.all_guiding_st_idx:
                 self.env.venv.all_guiding_states.append(mut_st)
-                self.env.venv.all_guiding_st_idx.append(org_idx)
                 self.env.venv.all_guiding_st_weights.append(1)
                 num_rlx_bugs += 1
             elif self.env_iden == "car_racing" and mut_type == 'unrlx' and o_mut-o_org > abs(o_mut*0.05):
                 self.env.venv.guiding_states.append(org.hi_lvl_state)
+                # ensure no duplicate guide states
                 if org_idx not in self.env.venv.all_guiding_st_idx:
                     self.env.venv.all_guiding_states.append(org.hi_lvl_state)
                     self.env.venv.all_guiding_st_idx.append(org_idx)
@@ -384,7 +387,6 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             elif (self.env_iden == "bipedal" or self.env_iden == "lunar") and mut_type == 'rlx' and o_org > o_mut:
                 self.env.guiding_states.append(mut_st)
                 self.env.all_guiding_states.append(mut_st)
-                self.env.all_guiding_st_idx.append(org_idx)
                 self.env.all_guiding_st_weights.append(1)
                 num_rlx_bugs += 1
             elif (self.env_iden == "bipedal" or self.env_iden == "lunar") and mut_type == 'unrlx' and o_org > o_mut:
@@ -410,7 +412,6 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
         data_f.write("%d,%d,%f,%f\n" % (self.num_timesteps, num_tot_bugs, avg_rew, g_prob))
         info_f.write("Current agent has %d + %d = %d bugs and %f reward at %d timesteps. Guide prob. was %f.\n" % (num_rlx_bugs, num_unrlx_bugs,num_tot_bugs, avg_rew, self.num_timesteps, g_prob))
-
         info_f.close()
         data_f.close()
 
