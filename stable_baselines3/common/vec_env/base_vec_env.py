@@ -65,10 +65,11 @@ class VecEnv(ABC):
         self.guide_prob = 0  # updated in on_policy_algorithm.py
         self.guide_rew  = 0  # updated in on_policy_algorithm.py
         self.guiding_states = list()      # filled in on_policy_algorithm.py
-        self.normal_init_states = list()  # filled in dummy_vec_env.py
         self.all_guiding_states = list()  # filled in on_policy_algorithm.py
         self.all_guiding_st_idx = list()  # filled in on_policy_algorithm.py
         self.all_guiding_st_weights = list()  # filled in on_policy_algorithm.py
+        self.gudie_init_nnstates = list()  # filled in dummy_vec_env.py
+        self.normal_init_nnstates = list()  # filled in dummy_vec_env.py
         self.locked = False   # updated in on_policy_algorithm.py
         self.last_avg_rew = 0 # updated in on_policy_algorithm.py
     

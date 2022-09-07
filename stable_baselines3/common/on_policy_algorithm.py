@@ -355,22 +355,21 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
     def test(self):
 
-        if self.env.guiding_states and self.env.normal_init_states:
-            flat_gstates = flatten_state(self.env.guiding_states)
-            flat_nstates = flatten_state(self.env.normal_init_states)
-
-            self.all_gstates_by_test.append(flat_gstates)
-            self.all_nstates_by_test.append(flat_nstates)
+        if self.env.guiding_init_nnstates and self.env.normal_init_nnstates:
+            self.all_gstates_by_test.append(self.env.guiding_init_nnstates)
+            self.all_nstates_by_test.append(self.env.normal_init_nnstates)
 
         if self.env_iden == "car_racing":
             self.env.venv.locked = True
             self.env.venv.guiding_states.clear()
-            self.env.venv.normal_init_states.clear()
+            self.env.venv.normal_init_nnstates.clear()
+            self.env.venv.guide_init_nnstates.clear()
             g_prob = self.env.venv.guide_prob
         else:
             self.env.locked = True
             self.env.guiding_states.clear()
-            self.env.normal_init_states.clear()
+            self.env.normal_init_nnstates.clear()
+            self.env.guide_init_nnstates.clear()
             g_prob = self.env.guide_prob
 
         num_rlx_bugs = 0
