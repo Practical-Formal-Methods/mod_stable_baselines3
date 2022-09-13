@@ -476,7 +476,7 @@ def hellinger(p, q):
 
 def get_partitions(inp, min_arr, max_arr, n_part=4):
     cov_arr = []
-    for i in range(inp):
+    for i in range(len(inp)):
         cov_part = ( (inp[i] - min_arr[i]) / (max_arr[i] - min_arr[i]) ) * n_part
         cov_part = int(cov_part)
 

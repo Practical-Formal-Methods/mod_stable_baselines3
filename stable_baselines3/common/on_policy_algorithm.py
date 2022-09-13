@@ -1,3 +1,4 @@
+import copy
 import time
 import pickle
 from collections import defaultdict
@@ -262,15 +263,15 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             self.train()
 
 
-            if self.num_timesteps % (2048 * 30) == 0:
+            if self.num_timesteps % (2048 * 50) == 0:
                 self.test()
-
+            
             # we put it here to keep guided and normal the same
-            if self.num_timesteps % (2048 * 60) == 0:
+            if self.num_timesteps % (2048 * 200) == 0:
                 self.game.env.seed(self.seed)
                 avg_rew = self.game.eval(eval_budget=30)
 
-            if not self.train_type == "normal" and self.num_timesteps % (2048 * 60) == 0:
+            if not self.train_type == "normal" and self.num_timesteps % (2048 * 200) == 0:
                 
                 fw = open(self.log_dir + "/info.log", "a")
 
@@ -291,6 +292,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                     fw.write("New guide probability is %f.\n" % self.env.guide_prob)
 
                 fw.close()
+
 
         callback.on_training_end()
 
@@ -354,26 +356,19 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
 
     def test(self):
-
-        if self.env.guiding_init_nnstates and self.env.normal_init_nnstates:
-            self.all_gstates_by_test.append(self.env.guiding_init_nnstates)
-            self.all_nstates_by_test.append(self.env.normal_init_nnstates)
-
+        
         if self.env_iden == "car_racing":
             self.env.venv.locked = True
             self.env.venv.guiding_states.clear()
-            self.env.venv.normal_init_nnstates.clear()
-            self.env.venv.guide_init_nnstates.clear()
             g_prob = self.env.venv.guide_prob
         else:
             self.env.locked = True
             self.env.guiding_states.clear()
-            self.env.normal_init_nnstates.clear()
-            self.env.guide_init_nnstates.clear()
             g_prob = self.env.guide_prob
 
         num_rlx_bugs = 0
         num_unrlx_bugs = 0
+        self.guiding_init_nnstates = list()
         for org_idx, mut_st, mut_type in self.testsuite:  # .items():
             org = self.pool[org_idx]
             # for rlx in rlx_list:
@@ -399,21 +394,30 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             # qualitative bug - win or crash
             elif (self.env_iden == "bipedal" or self.env_iden == "lunar") and mut_type == 'rlx' and o_org > o_mut:
                 self.env.guiding_states.append(mut_st)
+                self.guiding_init_nnstates.append(np.array(mut_llvl[0]))
                 self.env.all_guiding_states.append(mut_st)
                 self.env.all_guiding_st_weights.append(1)
                 num_rlx_bugs += 1
             elif (self.env_iden == "bipedal" or self.env_iden == "lunar") and mut_type == 'unrlx' and o_org > o_mut:
                 self.env.guiding_states.append(org.hi_lvl_state)
+                self.guiding_init_nnstates.append(np.array(org_llvl[0]))
                 if org_idx not in self.env.all_guiding_st_idx:
                     self.env.all_guiding_states.append(org.hi_lvl_state)
                     self.env.all_guiding_st_idx.append(org_idx)
                     self.env.all_guiding_st_weights.append(1)
                 num_unrlx_bugs += 1
 
+        self.all_gstates_by_test.append(self.guiding_init_nnstates)
+       
+        # normal inits has to be added before test
         if self.env_iden == "car_racing":
             self.env.venv.locked = False
+            self.all_nstates_by_test.append(copy.copy(self.env.venv.normal_init_nnstates))
+            self.env.venv.normal_init_nnstates.clear()
         else:
             self.env.locked = False
+            self.all_nstates_by_test.append(copy.copy(self.env.normal_init_nnstates))
+            self.env.normal_init_nnstates.clear()
 
         self.game.env.seed(self.seed)
         avg_rew = self.game.eval(eval_budget=30)
@@ -429,28 +433,50 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         data_f.close()
 
 
+
     def post_train(self):
-        all_guide_inits  = np.asarray(self.all_gstates_by_test)
-        all_normal_inits = np.asarray(self.all_nstates_by_test)
 
-        guide_max = np.amax(all_guide_inits, axis=(0,1))
-        guide_min = np.amin(all_guide_inits, axis=(0,1))
+        all_guide_inits = np.array(self.all_gstates_by_test)
+        all_normal_inits = np.array(self.all_nstates_by_test)
 
-        normal_max = np.amax(all_normal_inits, axis=(0,1))
-        normal_min = np.amin(all_normal_inits, axis=(0,1))
+        gmax_by_test, gmin_by_test = [], []
+        for ginit in all_guide_inits:
+            gmax_by_test.append(np.amax(ginit, axis=0))
+            gmin_by_test.append(np.amin(ginit, axis=0))
+
+        guide_max = np.amax(gmax_by_test, axis=0)
+        guide_min = np.amin(gmin_by_test, axis=0)
+
+        nmax_by_test, nmin_by_test = [], []
+        for ninit in all_normal_inits:
+            nmax_by_test.append(np.amax(ninit, axis=0))
+            nmin_by_test.append(np.amin(ninit, axis=0))
+
+        normal_max = np.amax(nmax_by_test, axis=0)
+        normal_min = np.amin(nmin_by_test, axis=0)
+
+        # normal_max = np.amax(all_normal_inits, axis=(0,1))
+        # normal_min = np.amin(all_normal_inits, axis=(0,1))
 
         feature_max, feature_min = [], []
-        for i in range(all_guide_inits.shape[-1]):
+        for i in range(len(guide_max)):
             feature_max.append(max(guide_max[i], normal_max[i]))
             feature_min.append(min(guide_min[i], normal_min[i]))
 
         # Calculate all hashes 
         cov_hash = {}
         num_unq_partitions = 0
-        all_guide_cov_distribution = []
-        for inits in np.concatenate((all_guide_inits, all_normal_inits)):  # default axis is 0
+        for inits in all_guide_inits:  # default axis is 0
             for init in inits:
                 partn_arr = get_partitions(init, feature_min, feature_max, n_part=4)
+                partn_arr = str(partn_arr)  # list is unhashable
+                if partn_arr not in cov_hash:
+                    cov_hash[partn_arr] = num_unq_partitions
+                    num_unq_partitions += 1
+        for inits in all_normal_inits:  # default axis is 0
+            for init in inits:
+                partn_arr = get_partitions(init, feature_min, feature_max, n_part=4)
+                partn_arr = str(partn_arr)  # list is unhashable
                 if partn_arr not in cov_hash:
                     cov_hash[partn_arr] = num_unq_partitions
                     num_unq_partitions += 1
@@ -461,6 +487,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             cov_dist = np.zeros(num_unq_partitions)
             for ninit in normal_inits:
                 partn_arr = get_partitions(ninit, feature_min, feature_max, n_part=4)
+                partn_arr = str(partn_arr)  # list is unhashable
                 cov_dist[cov_hash[partn_arr]] += 1
             all_normal_cov_distribution.append(cov_dist)
 
@@ -470,17 +497,18 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             cov_dist = np.zeros(num_unq_partitions)
             for ginit in guide_inits:
                 partn_arr = get_partitions(ginit, feature_min, feature_max, n_part=4)
+                partn_arr = str(partn_arr)  # list is unhashable
                 cov_dist[cov_hash[partn_arr]] += 1
             all_guide_cov_distribution.append(cov_dist)
-
-        guide_cov = open("guide_cov_dist.p", "wb")
-        normal_cov = open("normal_cov_dist.p", "wb")
+        
+        guide_cov  = open(self.log_dir + "/guide_cov_dist.p", "wb")
+        normal_cov = open(self.log_dir + "/normal_cov_dist.p", "wb")
         pickle.dump(all_guide_cov_distribution, guide_cov)
         pickle.dump(all_normal_cov_distribution, normal_cov)
 
+
     def explore(self):
         from lunar import Fuzzer, EnvWrapper
-
 
         game = EnvWrapper.Wrapper(self.env_iden)
         game.env = self.env

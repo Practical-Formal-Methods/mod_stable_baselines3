@@ -54,7 +54,6 @@ class DummyVecEnv(VecEnv):
                         guide_st_idx = self.rng.choice(range(len(self.guiding_states)))
                         guide_st = self.guiding_states.pop(guide_st_idx)
                         obs = self.envs[env_idx].reset(guide_st)
-                        self.guide_init_nnstates.append(obs)
                     elif self.all_guiding_states:  # and self.rng.random() < self.guide_prob:
                         weight_sum = sum(self.all_guiding_st_weights)
                         weights_norm = [raw_weight/weight_sum for raw_weight in self.all_guiding_st_weights]
@@ -64,13 +63,12 @@ class DummyVecEnv(VecEnv):
 
                         guide_st = self.all_guiding_states[guide_st_idx]
                         obs = self.envs[env_idx].reset(guide_st)
-                        self.guide_init_nnstates.append(obs)
                     else:
                         obs = self.envs[env_idx].reset()
                         self.normal_init_nnstates.append(obs)
                 else:
                     obs = self.envs[env_idx].reset()
-                    self.normal_init_nnstates.append(obs)
+                    if not self.locked: self.normal_init_nnstates.append(obs)
 
             self._save_obs(env_idx, obs)
         return (self._obs_from_buf(), np.copy(self.buf_rews), np.copy(self.buf_dones), deepcopy(self.buf_infos))
