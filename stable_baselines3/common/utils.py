@@ -497,3 +497,102 @@ def flatten_state(state):
     flat_state = np.asarray(flat_state)
 
     return flat_state
+
+def tune_alpha(guide_inits, normal_inits, threshold=0.5):
+    
+    guide_inits = np.array(guide_inits)
+    normal_inits = np.array(normal_inits)
+
+    guide_max = np.amax(guide_inits, axis=0)
+    guide_min = np.amin(guide_inits, axis=0)
+
+    normal_max = np.amax(normal_inits, axis=0)
+    normal_min = np.amin(normal_inits, axis=0)
+
+    feature_max, feature_min = [], []
+    for i in range(len(guide_max)):
+        feature_max.append(max(guide_max[i], normal_max[i]))
+        feature_min.append(min(guide_min[i], normal_min[i]))
+
+    cov_hash = {}
+    num_unq_partitions = 0
+    for init in guide_inits:
+        partn_arr = get_partitions(init, feature_min, feature_max, n_part=4)
+        partn_arr = str(partn_arr)  # list is unhashable
+        if partn_arr not in cov_hash:
+            cov_hash[partn_arr] = num_unq_partitions
+            num_unq_partitions += 1
+    for init in normal_inits:
+        partn_arr = get_partitions(init, feature_min, feature_max, n_part=4)
+        partn_arr = str(partn_arr)  # list is unhashable
+        if partn_arr not in cov_hash:
+            cov_hash[partn_arr] = num_unq_partitions
+            num_unq_partitions += 1
+
+    normal_coverage = np.zeros(num_unq_partitions)
+    for init in normal_inits:
+        partn_arr = get_partitions(init, feature_min, feature_max, n_part=4)
+        partn_arr = str(partn_arr)  # list is unhashable
+        normal_coverage[cov_hash[partn_arr]] += 1
+
+    alpha_selection = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+
+    rng = np.random.default_rng(42)
+    cur_alpha = None
+    new_inits = []
+    for alpha in alpha_selection:
+        if rng.random() < alpha:
+            idx = rng.choice(range(len(guide_inits)))
+            guide_st = guide_inits.pop(idx)
+            new_inits.append(guide_st)
+        else:
+            idx = rng.choice(range(len(normal_inits)))
+            norm_st = normal_inits.pop(idx)
+            new_inits.append(norm_st)
+
+        new_init_coverage = np.zeros(num_unq_partitions)
+        for init in new_inits:
+            partn_arr = get_partitions(init, feature_min, feature_max, n_part=4)
+            partn_arr = str(partn_arr)  # list is unhashable
+            new_init_coverage[cov_hash[partn_arr]] += 1
+
+        if hellinger(new_init_coverage, normal_coverage) > 0.5:
+            return cur_alpha
+        else:
+            cur_alpha = alpha
+
+    return cur_alpha
+
+def get_hashes(guide_inits, normal_inits, feature_min, feature_max):
+    cov_hash = {}
+    num_unq_partitions = 0
+    for inits in guide_inits:  # default axis is 0
+        for init in inits:
+            partn_arr = get_partitions(init, feature_min, feature_max, n_part=4)
+            partn_arr = str(partn_arr)  # list is unhashable
+            if partn_arr not in cov_hash:
+                cov_hash[partn_arr] = num_unq_partitions
+                num_unq_partitions += 1
+    for inits in normal_inits:  # default axis is 0
+        for init in inits:
+            partn_arr = get_partitions(init, feature_min, feature_max, n_part=4)
+            partn_arr = str(partn_arr)  # list is unhashable
+            if partn_arr not in cov_hash:
+                cov_hash[partn_arr] = num_unq_partitions
+                num_unq_partitions += 1
+
+    return cov_hash, num_unq_partitions
+
+
+def get_cov(cov_hash, all_inits, num_unq_partitions, feature_min, feature_max):
+    cov_distribution = []
+    for inits in all_inits:
+        cov_dist = np.zeros(num_unq_partitions)
+        for init in inits:
+            partn_arr = get_partitions(init, feature_min, feature_max, n_part=4)
+            partn_arr = str(partn_arr)  # list is unhashable
+            cov_dist[cov_hash[partn_arr]] += 1
+        cov_distribution.append(cov_dist)
+
+    return cov_distribution
+    

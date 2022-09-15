@@ -15,7 +15,7 @@ from mod_stable_baselines3.stable_baselines3.common.buffers import DictRolloutBu
 from mod_stable_baselines3.stable_baselines3.common.callbacks import BaseCallback
 from mod_stable_baselines3.stable_baselines3.common.policies import ActorCriticPolicy, BasePolicy
 from mod_stable_baselines3.stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedule
-from mod_stable_baselines3.stable_baselines3.common.utils import obs_as_tensor, safe_mean, hellinger, get_partitions, flatten_state
+from mod_stable_baselines3.stable_baselines3.common.utils import obs_as_tensor, safe_mean, hellinger, get_partitions, tune_alpha, get_hashes, get_cov
 from mod_stable_baselines3.stable_baselines3.common.vec_env import VecEnv
 
 
@@ -267,31 +267,31 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 self.test()
             
             # we put it here to keep guided and normal the same
-            if self.num_timesteps % (2048 * 200) == 0:
-                self.game.env.seed(self.seed)
-                avg_rew = self.game.eval(eval_budget=30)
+            # if self.num_timesteps % (2048 * 200) == 0:
+            #     self.game.env.seed(self.seed)
+            #     avg_rew = self.game.eval(eval_budget=30)
 
-            if not self.train_type == "normal" and self.num_timesteps % (2048 * 200) == 0:
+            # if not self.train_type == "normal" and self.num_timesteps % (2048 * 200) == 0:
                 
-                fw = open(self.log_dir + "/info.log", "a")
+            #     fw = open(self.log_dir + "/info.log", "a")
 
-                if self.env_iden == "car_racing":
-                    self.env.venv.last_avg_rew = avg_rew 
-                    if avg_rew > self.env.venv.guide_rew:
-                        self.env.venv.guide_prob = min(self.env.venv.guide_prob + self.guide_prob_inc, self.guide_prob_thold)
-                    else:
-                        self.env.venv.guide_prob = max(0, self.env.venv.guide_prob - self.guide_prob_inc)
-                    fw.write("New guide probability is %f.\n" % self.env.venv.guide_prob)
-                else:
-                    self.env.last_avg_rew = avg_rew
-                    if avg_rew > self.env.guide_rew:
-                        self.env.guide_prob = min(self.env.guide_prob + self.guide_prob_inc, self.guide_prob_thold)
-                    else:
-                        self.env.guide_prob = max(0, self.env.guide_prob - self.guide_prob_inc)
+            #     if self.env_iden == "car_racing":
+            #         self.env.venv.last_avg_rew = avg_rew 
+            #         if avg_rew > self.env.venv.guide_rew:
+            #             self.env.venv.guide_prob = min(self.env.venv.guide_prob + self.guide_prob_inc, self.guide_prob_thold)
+            #         else:
+            #             self.env.venv.guide_prob = max(0, self.env.venv.guide_prob - self.guide_prob_inc)
+            #         fw.write("New guide probability is %f.\n" % self.env.venv.guide_prob)
+            #     else:
+            #         self.env.last_avg_rew = avg_rew
+            #         if avg_rew > self.env.guide_rew:
+            #             self.env.guide_prob = min(self.env.guide_prob + self.guide_prob_inc, self.guide_prob_thold)
+            #         else:
+            #             self.env.guide_prob = max(0, self.env.guide_prob - self.guide_prob_inc)
 
-                    fw.write("New guide probability is %f.\n" % self.env.guide_prob)
+            #         fw.write("New guide probability is %f.\n" % self.env.guide_prob)
 
-                fw.close()
+            #     fw.close()
 
 
         callback.on_training_end()
@@ -408,19 +408,24 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 num_unrlx_bugs += 1
 
         self.all_gstates_by_test.append(self.guiding_init_nnstates)
-       
+        
+        alpha = tune_alpha(self.guiding_init_nnstates, self.env.venv.normal_init_nnstates)
+
         # normal inits has to be added before test
         if self.env_iden == "car_racing":
+            self.env.venv.guide_prob = alpha
             self.env.venv.locked = False
             self.all_nstates_by_test.append(copy.copy(self.env.venv.normal_init_nnstates))
             self.env.venv.normal_init_nnstates.clear()
         else:
+            self.env.guide_prob = alpha
             self.env.locked = False
             self.all_nstates_by_test.append(copy.copy(self.env.normal_init_nnstates))
             self.env.normal_init_nnstates.clear()
 
         self.game.env.seed(self.seed)
         avg_rew = self.game.eval(eval_budget=30)
+        self.last_avg_rew = avg_rew
 
         num_tot_bugs = num_rlx_bugs + num_unrlx_bugs
 
@@ -463,43 +468,14 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             feature_max.append(max(guide_max[i], normal_max[i]))
             feature_min.append(min(guide_min[i], normal_min[i]))
 
-        # Calculate all hashes 
-        cov_hash = {}
-        num_unq_partitions = 0
-        for inits in all_guide_inits:  # default axis is 0
-            for init in inits:
-                partn_arr = get_partitions(init, feature_min, feature_max, n_part=4)
-                partn_arr = str(partn_arr)  # list is unhashable
-                if partn_arr not in cov_hash:
-                    cov_hash[partn_arr] = num_unq_partitions
-                    num_unq_partitions += 1
-        for inits in all_normal_inits:  # default axis is 0
-            for init in inits:
-                partn_arr = get_partitions(init, feature_min, feature_max, n_part=4)
-                partn_arr = str(partn_arr)  # list is unhashable
-                if partn_arr not in cov_hash:
-                    cov_hash[partn_arr] = num_unq_partitions
-                    num_unq_partitions += 1
+        # Calculate all hashes
+        cov_hash, num_unq_partitions = get_hashes()
         
         # Find coverage dist. of normal inits
-        all_normal_cov_distribution = []
-        for normal_inits in all_normal_inits:
-            cov_dist = np.zeros(num_unq_partitions)
-            for ninit in normal_inits:
-                partn_arr = get_partitions(ninit, feature_min, feature_max, n_part=4)
-                partn_arr = str(partn_arr)  # list is unhashable
-                cov_dist[cov_hash[partn_arr]] += 1
-            all_normal_cov_distribution.append(cov_dist)
+        all_normal_cov_distribution = get_cov(cov_hash, all_normal_inits, num_unq_partitions, feature_min, feature_max)
 
         # Find coverage dist. of guiding inits
-        all_guide_cov_distribution = []
-        for guide_inits in all_guide_inits:
-            cov_dist = np.zeros(num_unq_partitions)
-            for ginit in guide_inits:
-                partn_arr = get_partitions(ginit, feature_min, feature_max, n_part=4)
-                partn_arr = str(partn_arr)  # list is unhashable
-                cov_dist[cov_hash[partn_arr]] += 1
-            all_guide_cov_distribution.append(cov_dist)
+        all_guide_cov_distribution = get_cov(cov_hash, all_guide_inits, num_unq_partitions, feature_min, feature_max)
         
         guide_cov  = open(self.log_dir + "/guide_cov_dist.p", "wb")
         normal_cov = open(self.log_dir + "/normal_cov_dist.p", "wb")
