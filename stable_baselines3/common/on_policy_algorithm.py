@@ -409,7 +409,6 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
         self.all_gstates_by_test.append(self.guiding_init_nnstates)
        
-        # normal inits has to be added before test
         if self.env_iden == "car_racing":
             self.env.venv.locked = False
             self.all_nstates_by_test.append(copy.copy(self.env.venv.normal_init_nnstates))
@@ -436,8 +435,13 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
     def post_train(self):
 
+        if self.env_iden == "car_racing":
+            self.all_nstates_by_test.append(copy.copy(self.env.venv.normal_init_nnstates))
+        else:
+            self.all_nstates_by_test.append(copy.copy(self.env.normal_init_nnstates))
+
         all_guide_inits = np.array(self.all_gstates_by_test)
-        all_normal_inits = np.array(self.all_nstates_by_test)
+        all_normal_inits = np.array(self.all_nstates_by_test[1:])  # there is a shift in collection of normal and guided states
 
         gmax_by_test, gmin_by_test = [], []
         for ginit in all_guide_inits:
