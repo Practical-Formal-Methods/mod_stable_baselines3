@@ -263,7 +263,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             self.train()
 
 
-            if self.num_timesteps % (2048 * 50) == 0:
+            if self.num_timesteps % (2048 * 20) == 0:
                 self.test()
             
             # we put it here to keep guided and normal the same
@@ -360,11 +360,9 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         if self.env_iden == "car_racing":
             self.env.venv.locked = True
             self.env.venv.guiding_states.clear()
-            g_prob = self.env.venv.guide_prob
         else:
             self.env.locked = True
             self.env.guiding_states.clear()
-            g_prob = self.env.guide_prob
 
         num_rlx_bugs = 0
         num_unrlx_bugs = 0
@@ -409,31 +407,35 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
         self.all_gstates_by_test.append(self.guiding_init_nnstates)
         
-        alpha = tune_alpha(self.guiding_init_nnstates, self.env.venv.normal_init_nnstates)
+
+        self.game.env.seed(self.seed)
+        avg_rew = self.game.eval(eval_budget=30)
 
         # normal inits has to be added before test
         if self.env_iden == "car_racing":
+            prev_alpha = self.env.venv.guide_prob
+            if avg_rew < self.env.venv.guide_rew or self.train_type == "normal" : alpha = 0
+            else: alpha = tune_alpha(self.guiding_init_nnstates, self.env.venv.normal_init_nnstates)
             self.env.venv.guide_prob = alpha
             self.env.venv.locked = False
             self.all_nstates_by_test.append(copy.copy(self.env.venv.normal_init_nnstates))
             self.env.venv.normal_init_nnstates.clear()
         else:
+            prev_alpha = self.env.guide_prob
+            if avg_rew < self.env.guide_rew or self.train_type == "normal" : alpha = 0
+            else: alpha = tune_alpha(self.guiding_init_nnstates, self.env.normal_init_nnstates)
             self.env.guide_prob = alpha
             self.env.locked = False
             self.all_nstates_by_test.append(copy.copy(self.env.normal_init_nnstates))
             self.env.normal_init_nnstates.clear()
-
-        self.game.env.seed(self.seed)
-        avg_rew = self.game.eval(eval_budget=30)
-        self.last_avg_rew = avg_rew
 
         num_tot_bugs = num_rlx_bugs + num_unrlx_bugs
 
         info_f = open(self.log_dir + "/info.log", "a")
         data_f = open(self.log_dir + "/bug_rew.log", "a")
 
-        data_f.write("%d,%d,%f,%f\n" % (self.num_timesteps, num_tot_bugs, avg_rew, g_prob))
-        info_f.write("Current agent has %d + %d = %d bugs and %f reward at %d timesteps. Guide prob. was %f.\n" % (num_rlx_bugs, num_unrlx_bugs,num_tot_bugs, avg_rew, self.num_timesteps, g_prob))
+        data_f.write("%d,%d,%f,%f\n" % (self.num_timesteps, num_tot_bugs, avg_rew, prev_alpha))
+        info_f.write("Current agent has %d + %d = %d bugs and %f reward at %d timesteps. Guide prob. was %f.\n" % (num_rlx_bugs, num_unrlx_bugs,num_tot_bugs, avg_rew, self.num_timesteps, prev_alpha))
         info_f.close()
         data_f.close()
 

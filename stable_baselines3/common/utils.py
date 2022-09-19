@@ -1,5 +1,6 @@
 import glob
 import os
+import copy
 import random
 from collections import deque
 from itertools import zip_longest
@@ -477,8 +478,11 @@ def hellinger(p, q):
 def get_partitions(inp, min_arr, max_arr, n_part=4):
     cov_arr = []
     for i in range(len(inp)):
-        cov_part = ( (inp[i] - min_arr[i]) / (max_arr[i] - min_arr[i]) ) * n_part
-        cov_part = int(cov_part)
+        if max_arr[i] == min_arr[i]: 
+            cov_part = 0
+        else:
+            cov_part = ( (inp[i] - min_arr[i]) / (max_arr[i] - min_arr[i]) ) * n_part
+            cov_part = int(cov_part)
 
         cov_arr.append(cov_part)
     
@@ -498,7 +502,7 @@ def flatten_state(state):
 
     return flat_state
 
-def tune_alpha(guide_inits, normal_inits, threshold=0.5):
+def tune_alpha(guide_inits, normal_inits, threshold=0.3):
     
     guide_inits = np.array(guide_inits)
     normal_inits = np.array(normal_inits)
@@ -513,6 +517,11 @@ def tune_alpha(guide_inits, normal_inits, threshold=0.5):
     for i in range(len(guide_max)):
         feature_max.append(max(guide_max[i], normal_max[i]))
         feature_min.append(min(guide_min[i], normal_min[i]))
+
+    print(feature_max)
+    print(feature_min)
+    print(guide_inits.shape)
+    print(normal_inits.shape)
 
     cov_hash = {}
     num_unq_partitions = 0
@@ -535,20 +544,26 @@ def tune_alpha(guide_inits, normal_inits, threshold=0.5):
         partn_arr = str(partn_arr)  # list is unhashable
         normal_coverage[cov_hash[partn_arr]] += 1
 
-    alpha_selection = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    alpha_selection = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 
     rng = np.random.default_rng(42)
     cur_alpha = None
-    new_inits = []
     for alpha in alpha_selection:
-        if rng.random() < alpha:
-            idx = rng.choice(range(len(guide_inits)))
-            guide_st = guide_inits.pop(idx)
-            new_inits.append(guide_st)
-        else:
-            idx = rng.choice(range(len(normal_inits)))
-            norm_st = normal_inits.pop(idx)
-            new_inits.append(norm_st)
+        new_inits = []
+        norm_init_range = list(range(len(normal_inits)))
+        guide_init_range = list(range(len(guide_inits)))
+        for _ in range(100):
+            if rng.random() < alpha:
+                if len(guide_init_range) > 0: continue
+                idx = rng.choice(guide_init_range)
+                guide_init_range.remove(idx)
+                guide_st = guide_inits[idx]
+                new_inits.append(guide_st)
+            elif len(norm_init_range) > 0:
+                idx = rng.choice(norm_init_range)
+                norm_init_range.remove(idx)
+                norm_st = normal_inits[idx]
+                new_inits.append(norm_st)
 
         new_init_coverage = np.zeros(num_unq_partitions)
         for init in new_inits:
@@ -556,7 +571,14 @@ def tune_alpha(guide_inits, normal_inits, threshold=0.5):
             partn_arr = str(partn_arr)  # list is unhashable
             new_init_coverage[cov_hash[partn_arr]] += 1
 
-        if hellinger(new_init_coverage, normal_coverage) > 0.5:
+        print(new_init_coverage)
+        print(normal_coverage)
+        norm_new_init_coverage = np.array(new_init_coverage) / sum(new_init_coverage)
+        norm_normal_coverage = np.array(normal_coverage) / sum(normal_coverage)
+        
+        dist = hellinger(norm_new_init_coverage, norm_normal_coverage) 
+        print(dist, alpha)
+        if dist > threshold:
             return cur_alpha
         else:
             cur_alpha = alpha
