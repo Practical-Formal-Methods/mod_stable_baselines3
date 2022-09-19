@@ -406,7 +406,6 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 num_unrlx_bugs += 1
 
         self.all_gstates_by_test.append(self.guiding_init_nnstates)
-        
 
         self.game.env.seed(self.seed)
         avg_rew = self.game.eval(eval_budget=30)
@@ -443,8 +442,13 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
     def post_train(self):
 
+        if self.env_iden == "car_racing":
+            self.all_nstates_by_test.append(copy.copy(self.env.venv.normal_init_nnstates))
+        else:
+            self.all_nstates_by_test.append(copy.copy(self.env.normal_init_nnstates))
+
         all_guide_inits = np.array(self.all_gstates_by_test)
-        all_normal_inits = np.array(self.all_nstates_by_test)
+        all_normal_inits = np.array(self.all_nstates_by_test[1:])  # there is a shift in collection of normal and guided states
 
         gmax_by_test, gmin_by_test = [], []
         for ginit in all_guide_inits:
