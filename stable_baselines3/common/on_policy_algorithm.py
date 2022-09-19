@@ -357,16 +357,14 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
     def test(self):
         
-        if self.env_iden == "car_racing":
-            self.env.venv.locked = True
-            self.env.venv.guiding_states.clear()
-        else:
-            self.env.locked = True
-            self.env.guiding_states.clear()
+        if self.env_iden == "car_racing": self.env.venv.locked = True
+        else: self.env.locked = True
 
         num_rlx_bugs = 0
         num_unrlx_bugs = 0
         self.guiding_init_nnstates = list()
+        cur_guiding_states = []
+        guiding_st_idx = []
         for org_idx, mut_st, mut_type in self.testsuite:  # .items():
             org = self.pool[org_idx]
             # for rlx in rlx_list:
@@ -375,35 +373,49 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             mut_llvl = self.env.reset(mut_st, org.rand_state)
             o_mut = self.game.play(mut_llvl)
 
-            #  quantitative bug - since no explicit winning or losing
-            if self.env_iden == "car_racing" and mut_type == 'rlx' and o_org-o_mut > abs(o_org*0.05):
-                self.env.venv.guiding_states.append(mut_st)
-                self.env.venv.all_guiding_states.append(mut_st)
-                self.env.venv.all_guiding_st_weights.append(1)
-                num_rlx_bugs += 1
-            elif self.env_iden == "car_racing" and mut_type == 'unrlx' and o_mut-o_org > abs(o_mut*0.05):
-                self.env.venv.guiding_states.append(org.hi_lvl_state)
-                # ensure no duplicate guide states
-                if org_idx not in self.env.venv.all_guiding_st_idx:
-                    self.env.venv.all_guiding_states.append(org.hi_lvl_state)
-                    self.env.venv.all_guiding_st_idx.append(org_idx)
-                    self.env.venv.all_guiding_st_weights.append(1)
-                num_unrlx_bugs += 1
-            # qualitative bug - win or crash
-            elif (self.env_iden == "bipedal" or self.env_iden == "lunar") and mut_type == 'rlx' and o_org > o_mut:
-                self.env.guiding_states.append(mut_st)
+            if self.env_iden == "car_racing": bug_cond = o_org-o_mut > abs(o_org*0.05)  # reward based comparison
+            else: bug_cond = o_org > o_mut  # failure based comparison
+
+            if mut_type == 'rlx' and bug_cond:
                 self.guiding_init_nnstates.append(np.array(mut_llvl[0]))
-                self.env.all_guiding_states.append(mut_st)
-                self.env.all_guiding_st_weights.append(1)
+                cur_guiding_states.append(mut_st)
                 num_rlx_bugs += 1
-            elif (self.env_iden == "bipedal" or self.env_iden == "lunar") and mut_type == 'unrlx' and o_org > o_mut:
-                self.env.guiding_states.append(org.hi_lvl_state)
-                self.guiding_init_nnstates.append(np.array(org_llvl[0]))
-                if org_idx not in self.env.all_guiding_st_idx:
-                    self.env.all_guiding_states.append(org.hi_lvl_state)
-                    self.env.all_guiding_st_idx.append(org_idx)
-                    self.env.all_guiding_st_weights.append(1)
+            elif mut_type == 'unrlx' and bug_cond:
+                if org_idx not in guiding_st_idx:
+                    self.guiding_init_nnstates.append(np.array(org_llvl[0]))
+                    cur_guiding_states.append(org.hi_lvl_state)
+                    guiding_st_idx.append(org_idx)
                 num_unrlx_bugs += 1
+
+            # #  quantitative bug - since no explicit winning or losing
+            # if self.env_iden == "car_racing" and mut_type == 'rlx' and o_org-o_mut > abs(o_org*0.05):
+            #     # self.env.venv.guiding_states.append(mut_st)
+            #     # self.env.venv.all_guiding_states.append(mut_st)
+            #     cur_guiding_states.append(mut_st)
+            #     num_rlx_bugs += 1
+            # elif self.env_iden == "car_racing" and mut_type == 'unrlx' and o_mut-o_org > abs(o_mut*0.05):
+            #     # self.env.venv.guiding_states.append(org.hi_lvl_state)
+            #     # ensure no duplicate guide states
+            #     if org_idx not in self.env.venv.all_guiding_st_idx:
+            #         # self.env.venv.all_guiding_states.append(org.hi_lvl_state)
+            #         cur_guiding_states.append(org.hi_lvl_state)
+            #         self.env.venv.all_guiding_st_idx.append(org_idx)
+            #     num_unrlx_bugs += 1
+            # # qualitative bug - win or crash
+            # elif (self.env_iden == "bipedal" or self.env_iden == "lunar") and mut_type == 'rlx' and o_org > o_mut:
+            #     # self.env.guiding_states.append(mut_st)
+            #     self.guiding_init_nnstates.append(np.array(mut_llvl[0]))
+            #     cur_guiding_states.append(mut_st)
+            #     # self.env.all_guiding_states.append(mut_st)
+            #     num_rlx_bugs += 1
+            # elif (self.env_iden == "bipedal" or self.env_iden == "lunar") and mut_type == 'unrlx' and o_org > o_mut:
+            #     # self.env.guiding_states.append(org.hi_lvl_state)
+            #     self.guiding_init_nnstates.append(np.array(org_llvl[0]))
+            #     if org_idx not in self.env.all_guiding_st_idx:
+            #         # self.env.all_guiding_states.append(org.hi_lvl_state)
+            #         cur_guiding_states.append(org.hi_lvl_state)
+            #         self.env.all_guiding_st_idx.append(org_idx)
+            #     num_unrlx_bugs += 1
 
         self.all_gstates_by_test.append(self.guiding_init_nnstates)
         
@@ -420,6 +432,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             self.env.venv.locked = False
             self.all_nstates_by_test.append(copy.copy(self.env.venv.normal_init_nnstates))
             self.env.venv.normal_init_nnstates.clear()
+            self.env.venv.all_guiding_states.append(cur_guiding_states)
         else:
             prev_alpha = self.env.guide_prob
             if avg_rew < self.env.guide_rew or self.train_type == "normal" : alpha = 0
@@ -428,6 +441,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             self.env.locked = False
             self.all_nstates_by_test.append(copy.copy(self.env.normal_init_nnstates))
             self.env.normal_init_nnstates.clear()
+            self.env.all_guiding_states.append(cur_guiding_states)
 
         num_tot_bugs = num_rlx_bugs + num_unrlx_bugs
 

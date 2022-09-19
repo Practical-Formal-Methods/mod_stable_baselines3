@@ -48,20 +48,18 @@ class DummyVecEnv(VecEnv):
                 self.buf_infos[env_idx]["terminal_observation"] = obs
                 
                 # wait until guiding states filled
-                # guide_prob set in myppo. it is set to 0 for normal training
-                if not self.locked and self.rng.random() < self.guide_prob:  #and self.last_avg_rew > self.guide_rew:
-                    if self.guiding_states:
-                        guide_st_idx = self.rng.choice(range(len(self.guiding_states)))
-                        guide_st = self.guiding_states.pop(guide_st_idx)
-                        obs = self.envs[env_idx].reset(guide_st)
-                    elif self.all_guiding_states:  # and self.rng.random() < self.guide_prob:
-                        weight_sum = sum(self.all_guiding_st_weights)
-                        weights_norm = [raw_weight/weight_sum for raw_weight in self.all_guiding_st_weights]
-                        guide_st_idx = self.rng.choice(range(len(self.all_guiding_states)), p=weights_norm)
+                # guide_prob set in on_policy_algorithm.py. it is set to 0 for normal training
+                if not self.locked and self.rng.random() < self.guide_prob:  
+                    if self.all_guiding_states:
+                        # batch selected regarding exponential dist then particular state selected uniformly random from the  selected batch
+                        batch_id = len(self.all_guiding_states)
+                        while batch_id >= len(self.all_guiding_states):
+                            batch_id = int(self.rng.exponential())
                         
-                        self.all_guiding_st_weights[guide_st_idx] *= 0.9
-
+                        guide_batch = self.all_guiding_states[batch_id]
+                        guide_st_idx = self.rng.choice(range(len(guide_batch)))
                         guide_st = self.all_guiding_states[guide_st_idx]
+
                         obs = self.envs[env_idx].reset(guide_st)
                     else:
                         obs = self.envs[env_idx].reset()
