@@ -367,14 +367,18 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         guiding_st_idx = []
         for org_idx, mut_st, mut_type in self.testsuite:  # .items():
             org = self.pool[org_idx]
-            # for rlx in rlx_list:
+            
+            # org_wins, mut_wins = 0, 0
+            # bug_conf_budget = 5
+            # for _ in range(bug_conf_budget):
             org_llvl = self.env.reset(org.hi_lvl_state, org.rand_state)
             o_org = self.game.play(org_llvl)
             mut_llvl = self.env.reset(mut_st, org.rand_state)
             o_mut = self.game.play(mut_llvl)
 
-            if self.env_iden == "car_racing": bug_cond = o_org-o_mut > abs(o_org*0.05)  # reward based comparison
-            else: bug_cond = o_org > o_mut  # failure based comparison
+            # if self.env_iden == "car_racing": bug_cond = o_org-o_mut > abs(o_org*0.05)  # reward based comparison
+            if mut_type == 'rlx': o_org > o_mut
+            else: bug_cond = o_mut > o_org # failure based comparison
 
             if mut_type == 'rlx' and bug_cond:
                 self.guiding_init_nnstates.append(np.array(mut_llvl[0]))
@@ -417,7 +421,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             #         self.env.all_guiding_st_idx.append(org_idx)
             #     num_unrlx_bugs += 1
 
-        self.all_gstates_by_test.append(self.guiding_init_nnstates)
+        if self.guiding_init_nnstates: self.all_gstates_by_test.append(self.guiding_init_nnstates)
 
         self.game.env.seed(self.seed)
         avg_rew = self.game.eval(eval_budget=30)

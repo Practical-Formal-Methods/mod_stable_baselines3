@@ -54,7 +54,8 @@ class DummyVecEnv(VecEnv):
                         # batch selected regarding exponential dist then particular state selected uniformly random from the  selected batch
                         batch_id = len(self.all_guiding_states)
                         while batch_id >= len(self.all_guiding_states):
-                            batch_id = int(self.rng.exponential())
+                            batch_id = self.rng.exponential()
+                        batch_id = int(len(self.all_guiding_states) - batch_id)
                         guide_batch = self.all_guiding_states[batch_id]
                         guide_st_idx = self.rng.choice(range(len(guide_batch)))
                         guide_st = guide_batch[guide_st_idx]
