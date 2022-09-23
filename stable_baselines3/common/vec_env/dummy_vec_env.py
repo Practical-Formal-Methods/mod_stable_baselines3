@@ -55,10 +55,9 @@ class DummyVecEnv(VecEnv):
                         batch_id = len(self.all_guiding_states)
                         while batch_id >= len(self.all_guiding_states):
                             batch_id = int(self.rng.exponential())
-                        
                         guide_batch = self.all_guiding_states[batch_id]
                         guide_st_idx = self.rng.choice(range(len(guide_batch)))
-                        guide_st = self.all_guiding_states[guide_st_idx]
+                        guide_st = guide_batch[guide_st_idx]
 
                         obs = self.envs[env_idx].reset(guide_st)
                     else:

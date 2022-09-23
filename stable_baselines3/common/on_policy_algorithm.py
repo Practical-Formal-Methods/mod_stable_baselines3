@@ -431,7 +431,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             self.env.venv.locked = False
             self.all_nstates_by_test.append(copy.copy(self.env.venv.normal_init_nnstates))
             self.env.venv.normal_init_nnstates.clear()
-            self.env.venv.all_guiding_states.append(cur_guiding_states)
+            if cur_guiding_states: self.env.venv.all_guiding_states.append(cur_guiding_states)
         else:
             prev_alpha = self.env.guide_prob
             if avg_rew < self.env.guide_rew or self.train_type == "normal" : alpha = 0
@@ -440,7 +440,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             self.env.locked = False
             self.all_nstates_by_test.append(copy.copy(self.env.normal_init_nnstates))
             self.env.normal_init_nnstates.clear()
-            self.env.all_guiding_states.append(cur_guiding_states)
+            if cur_guiding_states: self.env.all_guiding_states.append(cur_guiding_states)
 
         num_tot_bugs = num_rlx_bugs + num_unrlx_bugs
 
@@ -489,7 +489,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             feature_min.append(min(guide_min[i], normal_min[i]))
 
         # Calculate all hashes
-        cov_hash, num_unq_partitions = get_hashes()
+        cov_hash, num_unq_partitions = get_hashes(all_guide_inits, all_normal_inits, feature_min, feature_max)
         
         # Find coverage dist. of normal inits
         all_normal_cov_distribution = get_cov(cov_hash, all_normal_inits, num_unq_partitions, feature_min, feature_max)

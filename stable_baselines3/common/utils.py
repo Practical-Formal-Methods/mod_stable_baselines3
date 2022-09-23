@@ -502,7 +502,7 @@ def flatten_state(state):
 
     return flat_state
 
-def tune_alpha(guide_inits, normal_inits, threshold=0.3):
+def tune_alpha(guide_inits, normal_inits, threshold=0.5):
     
     guide_inits = np.array(guide_inits)
     normal_inits = np.array(normal_inits)
@@ -517,11 +517,6 @@ def tune_alpha(guide_inits, normal_inits, threshold=0.3):
     for i in range(len(guide_max)):
         feature_max.append(max(guide_max[i], normal_max[i]))
         feature_min.append(min(guide_min[i], normal_min[i]))
-
-    print(feature_max)
-    print(feature_min)
-    print(guide_inits.shape)
-    print(normal_inits.shape)
 
     cov_hash = {}
     num_unq_partitions = 0
@@ -547,14 +542,15 @@ def tune_alpha(guide_inits, normal_inits, threshold=0.3):
     alpha_selection = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 
     rng = np.random.default_rng(42)
-    cur_alpha = None
+    cur_alpha = 0.1
     for alpha in alpha_selection:
         new_inits = []
         norm_init_range = list(range(len(normal_inits)))
         guide_init_range = list(range(len(guide_inits)))
-        for _ in range(100):
+        # normal_cov has len(normal_inits) number of elements
+        for _ in range(len(normal_inits)):
             if rng.random() < alpha:
-                if len(guide_init_range) > 0: continue
+                if len(guide_init_range) == 0: return cur_alpha
                 idx = rng.choice(guide_init_range)
                 guide_init_range.remove(idx)
                 guide_st = guide_inits[idx]
