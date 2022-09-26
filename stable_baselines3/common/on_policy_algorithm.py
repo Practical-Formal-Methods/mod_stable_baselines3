@@ -263,7 +263,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             self.train()
 
 
-            if self.num_timesteps % (2048 * 20) == 0:
+            if self.num_timesteps % (2048 * 50) == 0:
                 self.test()
             
             # we put it here to keep guided and normal the same
@@ -341,15 +341,13 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         self.testsuite = []  # defaultdict(list)
         for org_idx, org in enumerate(self.pool):
             org_state = org.hi_lvl_state
-            # for _ in range(self.mut_budget):
-            if org_idx % 2 == 0:
-                rlx_state = mutator.mutate(org_state, rng, 'relax')
-                self.testsuite.append([org_idx, rlx_state, 'rlx'])
-                # self.testsuite[idx].append(rlx_state)
-            else:
-                unrlx_state = mutator.mutate(org_state, rng, 'unrelax')
-                if unrlx_state is not None:
-                    self.testsuite.append([org_idx, unrlx_state, 'unrlx'])
+            # if org_idx % 2 == 0:
+            rlx_state = mutator.mutate(org_state, rng, 'relax')
+            self.testsuite.append([org_idx, rlx_state, 'rlx'])
+            # else:
+            unrlx_state = mutator.mutate(org_state, rng, 'unrelax')
+            if unrlx_state is not None:
+                self.testsuite.append([org_idx, unrlx_state, 'unrlx'])
 
         self.all_gstates_by_test = []
         self.all_nstates_by_test = []
@@ -377,7 +375,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             o_mut = self.game.play(mut_llvl)
 
             # if self.env_iden == "car_racing": bug_cond = o_org-o_mut > abs(o_org*0.05)  # reward based comparison
-            if mut_type == 'rlx': o_org > o_mut
+            if mut_type == 'rlx': bug_cond = o_org > o_mut
             else: bug_cond = o_mut > o_org # failure based comparison
 
             if mut_type == 'rlx' and bug_cond:
@@ -429,7 +427,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         # normal inits has to be added before test
         if self.env_iden == "car_racing":
             prev_alpha = self.env.venv.guide_prob
-            if avg_rew < self.env.venv.guide_rew or self.train_type == "normal" : alpha = 0
+            if len(self.guiding_init_nnstates) == 0 and  avg_rew < self.env.venv.guide_rew or self.train_type == "normal" : alpha = 0
             else: alpha = tune_alpha(self.guiding_init_nnstates, self.env.venv.normal_init_nnstates)
             self.env.venv.guide_prob = alpha
             self.env.venv.locked = False
@@ -438,7 +436,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             if cur_guiding_states: self.env.venv.all_guiding_states.append(cur_guiding_states)
         else:
             prev_alpha = self.env.guide_prob
-            if avg_rew < self.env.guide_rew or self.train_type == "normal" : alpha = 0
+            if len(self.guiding_init_nnstates) == 0 or avg_rew < self.env.guide_rew or self.train_type == "normal" : alpha = 0
             else: alpha = tune_alpha(self.guiding_init_nnstates, self.env.normal_init_nnstates)
             self.env.guide_prob = alpha
             self.env.locked = False
