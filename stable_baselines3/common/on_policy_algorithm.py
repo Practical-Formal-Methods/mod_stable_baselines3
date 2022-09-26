@@ -451,10 +451,11 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
         data_f.write("%d,%d,%f,%f\n" % (self.num_timesteps, num_tot_bugs, avg_rew, prev_alpha))
         info_f.write("Current agent has %d + %d = %d bugs and %f reward at %d timesteps. Guide prob. was %f.\n" % (num_rlx_bugs, num_unrlx_bugs,num_tot_bugs, avg_rew, self.num_timesteps, prev_alpha))
+        info_f.write(str(self.guide_states_solved) + "\n")
         info_f.close()
         data_f.close()
 
-
+        self.guide_states_solved = [-1] * len(self.env.all_guiding_states[-1])
 
     def post_train(self):
 

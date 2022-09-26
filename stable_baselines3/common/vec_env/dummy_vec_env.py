@@ -34,6 +34,8 @@ class DummyVecEnv(VecEnv):
         self.buf_infos = [{} for _ in range(self.num_envs)]
         self.actions = None
         self.metadata = env.metadata
+        self.prev_guide_st_idx = None
+        self.guide_states_solved = [-1] * len(self.all_guiding_states[-1])
 
     def step_async(self, actions: np.ndarray) -> None:
         self.actions = actions
@@ -47,11 +49,11 @@ class DummyVecEnv(VecEnv):
                 # save final observation where user can get it, then reset
                 self.buf_infos[env_idx]["terminal_observation"] = obs
                 
-                # wait until guiding states filled
+                # locked: wait until guiding states filled
                 # guide_prob set in on_policy_algorithm.py. it is set to 0 for normal training
                 if not self.locked and self.rng.random() < self.guide_prob:  
                     if self.all_guiding_states:
-                        # batch selected regarding exponential dist then particular state selected uniformly random from the  selected batch
+                        # batch selected regarding exponential dist then a particular state selected uniformly random from the  selected batch
                         batch_id = len(self.all_guiding_states)
                         while batch_id >= len(self.all_guiding_states):
                             batch_id = self.rng.exponential()
@@ -61,6 +63,15 @@ class DummyVecEnv(VecEnv):
                         guide_st = guide_batch[guide_st_idx]
 
                         obs = self.envs[env_idx].reset(guide_st)
+
+                        if batch_id == len(self.all_guiding_states)-1: 
+                            if self.prev_guide_st_idx is not None:
+                                if self.buf_rews[env_idx] > -100:   # no-crash
+                                    self.guide_states_solved[guide_st_idx] = 1
+                                else:   # crash
+                                    self.guide_states_solved[guide_st_idx] = 0
+                            self.prev_guide_st_idx =  guide_st_idx
+
                     else:
                         obs = self.envs[env_idx].reset()
                         self.normal_init_nnstates.append(obs)
