@@ -358,17 +358,14 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         if self.env_iden == "car_racing": self.env.venv.locked = True
         else: self.env.locked = True
 
-        num_rlx_bugs = 0
-        num_unrlx_bugs = 0
+        num_rlx_bugs, rlx_fp = 0, 0
+        num_unrlx_bugs, unrlx_fp = 0, 0
         self.guiding_init_nnstates = list()
         cur_guiding_states = []
         guiding_st_idx = []
         for org_idx, mut_st, mut_type in self.testsuite:  # .items():
             org = self.pool[org_idx]
             
-            # org_wins, mut_wins = 0, 0
-            # bug_conf_budget = 5
-            # for _ in range(bug_conf_budget):
             org_llvl = self.env.reset(org.hi_lvl_state, org.rand_state)
             o_org = self.game.play(org_llvl)
             mut_llvl = self.env.reset(mut_st, org.rand_state)
@@ -382,43 +379,27 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 self.guiding_init_nnstates.append(np.array(mut_llvl[0]))
                 cur_guiding_states.append(mut_st)
                 num_rlx_bugs += 1
+            
+                org_llvl = self.env.reset(org.hi_lvl_state, org.rand_state)
+                o_org = self.game.play(org_llvl)
+                mut_llvl = self.env.reset(mut_st, org.rand_state)
+                o_mut = self.game.play(mut_llvl)
+                if not o_org > o_mut: rlx_fp += 1
+
             elif mut_type == 'unrlx' and bug_cond:
                 if org_idx not in guiding_st_idx:
                     self.guiding_init_nnstates.append(np.array(org_llvl[0]))
                     cur_guiding_states.append(org.hi_lvl_state)
                     guiding_st_idx.append(org_idx)
+
+                    org_llvl = self.env.reset(org.hi_lvl_state, org.rand_state)
+                    o_org = self.game.play(org_llvl)
+                    mut_llvl = self.env.reset(mut_st, org.rand_state)
+                    o_mut = self.game.play(mut_llvl)
+                    if not o_mut > o_org: unrlx_fp += 1
+
                 num_unrlx_bugs += 1
-
-            # #  quantitative bug - since no explicit winning or losing
-            # if self.env_iden == "car_racing" and mut_type == 'rlx' and o_org-o_mut > abs(o_org*0.05):
-            #     # self.env.venv.guiding_states.append(mut_st)
-            #     # self.env.venv.all_guiding_states.append(mut_st)
-            #     cur_guiding_states.append(mut_st)
-            #     num_rlx_bugs += 1
-            # elif self.env_iden == "car_racing" and mut_type == 'unrlx' and o_mut-o_org > abs(o_mut*0.05):
-            #     # self.env.venv.guiding_states.append(org.hi_lvl_state)
-            #     # ensure no duplicate guide states
-            #     if org_idx not in self.env.venv.all_guiding_st_idx:
-            #         # self.env.venv.all_guiding_states.append(org.hi_lvl_state)
-            #         cur_guiding_states.append(org.hi_lvl_state)
-            #         self.env.venv.all_guiding_st_idx.append(org_idx)
-            #     num_unrlx_bugs += 1
-            # # qualitative bug - win or crash
-            # elif (self.env_iden == "bipedal" or self.env_iden == "lunar") and mut_type == 'rlx' and o_org > o_mut:
-            #     # self.env.guiding_states.append(mut_st)
-            #     self.guiding_init_nnstates.append(np.array(mut_llvl[0]))
-            #     cur_guiding_states.append(mut_st)
-            #     # self.env.all_guiding_states.append(mut_st)
-            #     num_rlx_bugs += 1
-            # elif (self.env_iden == "bipedal" or self.env_iden == "lunar") and mut_type == 'unrlx' and o_org > o_mut:
-            #     # self.env.guiding_states.append(org.hi_lvl_state)
-            #     self.guiding_init_nnstates.append(np.array(org_llvl[0]))
-            #     if org_idx not in self.env.all_guiding_st_idx:
-            #         # self.env.all_guiding_states.append(org.hi_lvl_state)
-            #         cur_guiding_states.append(org.hi_lvl_state)
-            #         self.env.all_guiding_st_idx.append(org_idx)
-            #     num_unrlx_bugs += 1
-
+                
         if self.guiding_init_nnstates: self.all_gstates_by_test.append(self.guiding_init_nnstates)
 
         self.game.env.seed(self.seed)
@@ -450,12 +431,11 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         data_f = open(self.log_dir + "/bug_rew.log", "a")
 
         data_f.write("%d,%d,%f,%f\n" % (self.num_timesteps, num_tot_bugs, avg_rew, prev_alpha))
-        info_f.write("Current agent has %d + %d = %d bugs and %f reward at %d timesteps. Guide prob. was %f.\n" % (num_rlx_bugs, num_unrlx_bugs,num_tot_bugs, avg_rew, self.num_timesteps, prev_alpha))
-        info_f.write(str(self.guide_states_solved) + "\n")
+        info_f.write("Current agent has %d(%d) + %d(%d) = %d(%d) bugs and %f reward at %d timesteps. Guide prob. was %f.\n" % (num_rlx_bugs, rlx_fp,
+        num_unrlx_bugs, unrlx_fp, num_tot_bugs, rlx_fp+unrlx_fp, avg_rew, self.num_timesteps, prev_alpha))
         info_f.close()
         data_f.close()
 
-        self.guide_states_solved = [-1] * len(self.env.all_guiding_states[-1])
 
     def post_train(self):
 

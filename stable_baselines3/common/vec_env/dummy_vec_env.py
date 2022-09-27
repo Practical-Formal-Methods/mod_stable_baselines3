@@ -34,8 +34,6 @@ class DummyVecEnv(VecEnv):
         self.buf_infos = [{} for _ in range(self.num_envs)]
         self.actions = None
         self.metadata = env.metadata
-        self.prev_guide_st_idx = None
-        self.guide_states_solved = [-1] * len(self.all_guiding_states[-1])
 
     def step_async(self, actions: np.ndarray) -> None:
         self.actions = actions
@@ -63,15 +61,6 @@ class DummyVecEnv(VecEnv):
                         guide_st = guide_batch[guide_st_idx]
 
                         obs = self.envs[env_idx].reset(guide_st)
-
-                        if batch_id == len(self.all_guiding_states)-1: 
-                            if self.prev_guide_st_idx is not None:
-                                if self.buf_rews[env_idx] > -100:   # no-crash
-                                    self.guide_states_solved[guide_st_idx] = 1
-                                else:   # crash
-                                    self.guide_states_solved[guide_st_idx] = 0
-                            self.prev_guide_st_idx =  guide_st_idx
-
                     else:
                         obs = self.envs[env_idx].reset()
                         self.normal_init_nnstates.append(obs)
