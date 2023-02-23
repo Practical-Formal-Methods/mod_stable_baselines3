@@ -408,7 +408,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         # normal inits has to be added before test
         if self.env_iden == "car_racing":
             prev_alpha = self.env.venv.guide_prob
-            if len(self.guiding_init_nnstates) == 0 and  avg_rew < self.env.venv.guide_rew or self.train_type == "normal" : alpha = 0
+            if len(self.guiding_init_nnstates) == 0 or avg_rew < self.env.venv.guide_rew or self.train_type == "normal" : alpha = 0
             else: alpha = tune_alpha(self.guiding_init_nnstates, self.env.venv.normal_init_nnstates)
             self.env.venv.guide_prob = alpha
             self.env.venv.locked = False
