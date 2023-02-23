@@ -366,37 +366,31 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         for org_idx, mut_st, mut_type in self.testsuite:  # .items():
             org = self.pool[org_idx]
             
-            org_llvl = self.env.reset(org.hi_lvl_state, org.rand_state)
-            o_org = self.game.play(org_llvl)
-            mut_llvl = self.env.reset(mut_st, org.rand_state)
-            o_mut = self.game.play(mut_llvl)
+            bug_cond = True
+            for _ in range(3):
+                org_llvl = self.env.reset(org.hi_lvl_state, org.rand_state)
+                o_org = self.game.play(org_llvl)
+                mut_llvl = self.env.reset(mut_st, org.rand_state)
+                o_mut = self.game.play(mut_llvl)
+
+                if (mut_type == 'rlx' and not o_org > o_mut) or (mut_type == 'unrlx' and not o_mut > o_org):
+                    bug_cond = False
+                    break
 
             # if self.env_iden == "car_racing": bug_cond = o_org-o_mut > abs(o_org*0.05)  # reward based comparison
-            if mut_type == 'rlx': bug_cond = o_org > o_mut
-            else: bug_cond = o_mut > o_org # failure based comparison
+            # if mut_type == 'rlx': bug_cond = o_org > o_mut
+            # else: bug_cond = o_mut > o_org # failure based comparison
 
             if mut_type == 'rlx' and bug_cond:
                 self.guiding_init_nnstates.append(np.array(mut_llvl[0]))
                 cur_guiding_states.append(mut_st)
                 num_rlx_bugs += 1
             
-                org_llvl = self.env.reset(org.hi_lvl_state, org.rand_state)
-                o_org = self.game.play(org_llvl)
-                mut_llvl = self.env.reset(mut_st, org.rand_state)
-                o_mut = self.game.play(mut_llvl)
-                if not o_org > o_mut: rlx_fp += 1
-
             elif mut_type == 'unrlx' and bug_cond:
                 if org_idx not in guiding_st_idx:
                     self.guiding_init_nnstates.append(np.array(org_llvl[0]))
                     cur_guiding_states.append(org.hi_lvl_state)
                     guiding_st_idx.append(org_idx)
-
-                    org_llvl = self.env.reset(org.hi_lvl_state, org.rand_state)
-                    o_org = self.game.play(org_llvl)
-                    mut_llvl = self.env.reset(mut_st, org.rand_state)
-                    o_mut = self.game.play(mut_llvl)
-                    if not o_mut > o_org: unrlx_fp += 1
 
                 num_unrlx_bugs += 1
                 
