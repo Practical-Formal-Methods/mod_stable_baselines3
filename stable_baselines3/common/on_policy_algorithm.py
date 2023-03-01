@@ -366,10 +366,12 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             org = self.pool[org_idx]
             
             bug_cond = True
-            for _ in range(3):
-                org_llvl = self.env.reset(org.hi_lvl_state, org.rand_state)
+            for rs in range(3):
+                self.game.env.seed(rs)
+                org_llvl = self.env.reset(org.hi_lvl_state)  # , org.rand_state)
                 o_org = self.game.play(org_llvl)
-                mut_llvl = self.env.reset(mut_st, org.rand_state)
+                self.game.env.seed(rs)
+                mut_llvl = self.env.reset(mut_st)  # , org.rand_state)
                 o_mut = self.game.play(mut_llvl)
 
                 if (mut_type == 'rlx' and not o_org > o_mut) or (mut_type == 'unrlx' and not o_mut > o_org):
