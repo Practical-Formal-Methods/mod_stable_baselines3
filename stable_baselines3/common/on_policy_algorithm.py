@@ -337,14 +337,12 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
         poolfile= open("%s/state_pool.p" % self.env_iden, 'rb')
         pool = pickle.load(poolfile)[1]
-        self.pool = rng.choice(pool, self.explr_budget)
+        self.pool = rng.choice(pool, self.test_budget)
         self.testsuite = []  # defaultdict(list)
         for org_idx, org in enumerate(self.pool):
             org_state = org.hi_lvl_state
-            # if org_idx % 2 == 0:
             rlx_state = mutator.mutate(org_state, rng, 'relax')
             self.testsuite.append([org_idx, rlx_state, 'rlx'])
-            # else:
             unrlx_state = mutator.mutate(org_state, rng, 'unrelax')
             if unrlx_state is not None:
                 self.testsuite.append([org_idx, unrlx_state, 'unrlx'])
@@ -362,7 +360,8 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         num_unrlx_bugs, unrlx_fp = 0, 0
         self.guiding_init_nnstates = list()
         cur_guiding_states = []
-        guiding_st_idx = []
+        # guiding_st_idx = []
+        rlx_bug_idx, unrlx_bug_idx = [], []
         for org_idx, mut_st, mut_type in self.testsuite:  # .items():
             org = self.pool[org_idx]
             
@@ -382,15 +381,16 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             # else: bug_cond = o_mut > o_org # failure based comparison
 
             if mut_type == 'rlx' and bug_cond:
+                rlx_bug_idx.append(org_idx)
                 self.guiding_init_nnstates.append(np.array(mut_llvl[0]))
                 cur_guiding_states.append(mut_st)
                 num_rlx_bugs += 1
             
             elif mut_type == 'unrlx' and bug_cond:
-                if org_idx not in guiding_st_idx:
-                    self.guiding_init_nnstates.append(np.array(org_llvl[0]))
-                    cur_guiding_states.append(org.hi_lvl_state)
-                    guiding_st_idx.append(org_idx)
+                unrlx_bug_idx.append(org_idx)
+                # if org_idx not in unrlx_bug_idx:  # this was to prevent adding the same (org) state twice to guiding states. But removed it for exponential guiding state selection.
+                self.guiding_init_nnstates.append(np.array(org_llvl[0]))
+                cur_guiding_states.append(org.hi_lvl_state)
 
                 num_unrlx_bugs += 1
                 
@@ -424,9 +424,8 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         info_f = open(self.log_dir + "/info.log", "a")
         data_f = open(self.log_dir + "/bug_rew.log", "a")
 
-        data_f.write("%d,%d,%f,%f\n" % (self.num_timesteps, num_tot_bugs, avg_rew, prev_alpha))
-        info_f.write("Current agent has %d(%d) + %d(%d) = %d(%d) bugs and %f reward at %d timesteps. Guide prob. was %f.\n" % (num_rlx_bugs, rlx_fp,
-        num_unrlx_bugs, unrlx_fp, num_tot_bugs, rlx_fp+unrlx_fp, avg_rew, self.num_timesteps, prev_alpha))
+        data_f.write("%d;%d;%f;%f;%s;%s\n" % (self.num_timesteps, num_tot_bugs, avg_rew, prev_alpha, str(rlx_bug_idx), str(unrlx_bug_idx)))
+        info_f.write("Current agent has %d(%d) + %d(%d) = %d(%d) bugs and %f reward at %d timesteps. Guide prob. was %f.\n" % (num_rlx_bugs, rlx_fp, num_unrlx_bugs, unrlx_fp, num_tot_bugs, rlx_fp+unrlx_fp, avg_rew, self.num_timesteps, prev_alpha))
         info_f.close()
         data_f.close()
 

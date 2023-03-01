@@ -93,7 +93,7 @@ class MyPPO(OnPolicyAlgorithm):
         guide_prob_inc: float = 0.1,
         train_type: str = "normal",
         log_dir: str = "logs/",
-        explr_budget: int = 800,
+        test_budget: int = 800,
         guide_prob_thold: int = 0.6,
         env_iden: str = "lunar",
     ):
@@ -129,7 +129,7 @@ class MyPPO(OnPolicyAlgorithm):
         self.log_dir = log_dir
         self.guide_prob_inc = guide_prob_inc
         self.guide_prob_thold = guide_prob_thold
-        self.explr_budget = explr_budget
+        self.test_budget = test_budget
         # self.mut_budget = mut_budget
         self.env_iden = env_iden
         # Sanity check, otherwise it will lead to noisy gradient and NaN

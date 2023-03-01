@@ -567,8 +567,6 @@ def tune_alpha(guide_inits, normal_inits, threshold=0.5):
             partn_arr = str(partn_arr)  # list is unhashable
             new_init_coverage[cov_hash[partn_arr]] += 1
 
-        print(new_init_coverage)
-        print(normal_coverage)
         norm_new_init_coverage = np.array(new_init_coverage) / sum(new_init_coverage)
         norm_normal_coverage = np.array(normal_coverage) / sum(normal_coverage)
         
