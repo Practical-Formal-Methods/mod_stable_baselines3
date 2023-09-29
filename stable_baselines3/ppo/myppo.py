@@ -89,12 +89,13 @@ class MyPPO(OnPolicyAlgorithm):
         seed: Optional[int] = None,
         device: Union[th.device, str] = "auto",
         _init_setup_model: bool = True,
-        guide_rew: int = 100,  # 2**19 + 2**18,
-        guide_prob_inc: float = 0.1,
+
+        guide_start_tstep: int = 2**20,  # 100
+        guide_end_tstep: int = 2**20,
         train_type: str = "normal",
         log_dir: str = "logs/",
         test_budget: int = 800,
-        guide_prob_thold: int = 0.6,
+        guide_prob: int = 0.1,
         env_iden: str = "lunar",
     ):
 
@@ -127,11 +128,12 @@ class MyPPO(OnPolicyAlgorithm):
         
         self.train_type = train_type
         self.log_dir = log_dir
-        self.guide_prob_inc = guide_prob_inc
-        self.guide_prob_thold = guide_prob_thold
+        self.guide_prob = guide_prob
+        self.guide_start_tstep = guide_start_tstep
+        self.guide_end_tstep = guide_end_tstep
         self.test_budget = test_budget
-        # self.mut_budget = mut_budget
         self.env_iden = env_iden
+
         # Sanity check, otherwise it will lead to noisy gradient and NaN
         # because of the advantage normalization
         assert (
@@ -141,10 +143,8 @@ class MyPPO(OnPolicyAlgorithm):
         if self.env is not None:
             if self.env_iden == "car_racing":
                 self.env.venv.rng = np.random.default_rng(self.seed)
-                self.env.venv.guide_rew = guide_rew  # used in dummy_vec_env.py
             else:
                 self.env.rng = np.random.default_rng(self.seed)
-                self.env.guide_rew = guide_rew  # used in dummy_vec_env.py
 
             # Check that `n_steps * n_envs > 1` to avoid NaN
             # when doing advantage normalization

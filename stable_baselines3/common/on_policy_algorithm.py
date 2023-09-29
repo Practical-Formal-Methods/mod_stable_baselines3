@@ -262,7 +262,6 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
             self.train()
 
-
             if self.num_timesteps % (2048 * 50) == 0:
                 self.test()
             
@@ -350,6 +349,11 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         self.all_gstates_by_test = []
         self.all_nstates_by_test = []
 
+        self.case_track = defaultdict(list)
+        self.solved = defaultdict(set)
+
+        # self.num_winwins = []
+        # self.guide_start = False
 
     def test(self):
         
@@ -358,25 +362,54 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
         num_rlx_bugs, rlx_fp = 0, 0
         num_unrlx_bugs, unrlx_fp = 0, 0
-        self.guiding_init_nnstates = list()
-        cur_guiding_states = []
-        # guiding_st_idx = []
+        cur_guiding_nn_states = []
+        cur_guiding_hi_lvl_states = []
         rlx_bug_idx, unrlx_bug_idx = [], []
+        case_track_dict_rlx = defaultdict(list)
+        case_track_dict_unrlx = defaultdict(list)
         for org_idx, mut_st, mut_type in self.testsuite:  # .items():
             org = self.pool[org_idx]
             
-            bug_cond = True
-            for rs in range(3):
+            bug_cond = False
+            tot_org_out, tot_mut_out = 0, 0
+            for rs in range(2):
                 self.game.env.seed(rs)
                 org_llvl = self.env.reset(org.hi_lvl_state)  # , org.rand_state)
                 o_org = self.game.play(org_llvl)
+                tot_org_out += o_org
                 self.game.env.seed(rs)
-                mut_llvl = self.env.reset(mut_st)  # , org.rand_state)
+                mut_llvl = self.env.reset(mut_st)  # , org.rand_state) 
                 o_mut = self.game.play(mut_llvl)
+                tot_mut_out += o_mut
 
-                if (mut_type == 'rlx' and not o_org > o_mut) or (mut_type == 'unrlx' and not o_mut > o_org):
-                    bug_cond = False
-                    break
+                # if (mut_type == 'rlx' and not o_org > o_mut) or (mut_type == 'unrlx' and not o_mut > o_org):
+                #     bug_cond = False
+                #     break
+
+            if mut_type == 'rlx':
+                if tot_org_out == 2: self.solved['rlx'].add(org_idx)
+                
+                if tot_org_out == 0 and tot_mut_out == 0:
+                    case_track_dict_rlx['case1'].append(org_idx)
+                elif tot_org_out == 2 and tot_mut_out == 2:
+                    case_track_dict_rlx['case2'].append(org_idx)
+                elif tot_org_out == 0 and tot_mut_out == 2:
+                    case_track_dict_rlx['case3'].append(org_idx)
+                elif tot_org_out == 2 and tot_mut_out == 0:
+                    case_track_dict_rlx['case4'].append(org_idx)
+                    bug_cond = True
+            if mut_type == 'unrlx':
+                if tot_mut_out == 2: self.solved['unrlx'].add(org_idx)
+                
+                if tot_mut_out == 0 and tot_org_out == 0:
+                    case_track_dict_unrlx['case1'].append(org_idx)
+                elif tot_mut_out == 2 and tot_org_out == 2:
+                    case_track_dict_unrlx['case2'].append(org_idx)
+                elif tot_mut_out == 0 and tot_org_out == 2:
+                    case_track_dict_unrlx['case3'].append(org_idx)
+                elif tot_mut_out == 2 and tot_org_out == 0:
+                    case_track_dict_unrlx['case4'].append(org_idx)
+                    bug_cond = True
 
             # if self.env_iden == "car_racing": bug_cond = o_org-o_mut > abs(o_org*0.05)  # reward based comparison
             # if mut_type == 'rlx': bug_cond = o_org > o_mut
@@ -384,55 +417,86 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
             if mut_type == 'rlx' and bug_cond:
                 rlx_bug_idx.append(org_idx)
-                self.guiding_init_nnstates.append(np.array(mut_llvl[0]))
-                cur_guiding_states.append(mut_st)
+                # why [0]? Because mutllvl is list of list
+                cur_guiding_nn_states.append(np.array(mut_llvl[0]))
+                cur_guiding_hi_lvl_states.append(mut_st)
                 num_rlx_bugs += 1
             
             elif mut_type == 'unrlx' and bug_cond:
                 unrlx_bug_idx.append(org_idx)
-                # if org_idx not in unrlx_bug_idx:  # this was to prevent adding the same (org) state twice to guiding states. But removed it for exponential guiding state selection.
-                self.guiding_init_nnstates.append(np.array(org_llvl[0]))
-                cur_guiding_states.append(org.hi_lvl_state)
+                if org_idx not in unrlx_bug_idx:  # this is to prevent adding the same (org) state twice to guiding states. Removed it for exponential guiding state selection.
+                    cur_guiding_nn_states.append(np.array(org_llvl[0]))
+                    cur_guiding_hi_lvl_states.append(org.hi_lvl_state)
+                    num_unrlx_bugs += 1
 
-                num_unrlx_bugs += 1
-                
-        if self.guiding_init_nnstates: self.all_gstates_by_test.append(self.guiding_init_nnstates)
+        self.case_track['rlx'].append(case_track_dict_rlx)
+        self.case_track['unrlx'].append(case_track_dict_unrlx)
 
         self.game.env.seed(self.seed)
         avg_rew = self.game.eval(eval_budget=30)
 
+        # from scipy.stats import entropy
+        # self.num_winwins.append(len(case_track_dict_rlx['case2']) + len(case_track_dict_unrlx['case2']))
+        # if len(self.num_winwins) > 10: self.num_winwins = self.num_winwins[1:]
+        # elif len(self.num_winwins) == 10:
+        #     # norm_num_winwins = self.num_winwins / np.linalg.norm(self.num_winwins)
+        #     norm_num_winwins = [x/sum(self.num_winwins) for x in self.num_winwins ]
+        #     # TODO HARDCODED THRESHOLD
+        #     if entropy(norm_num_winwins) > 2: self.guide_start = True   
+
         # normal inits has to be added before test
         if self.env_iden == "car_racing":
-            prev_alpha = self.env.venv.guide_prob
-            if len(self.guiding_init_nnstates) == 0 or avg_rew < self.env.venv.guide_rew or self.train_type == "normal" : alpha = 0
-            else: alpha = tune_alpha(self.guiding_init_nnstates, self.env.venv.normal_init_nnstates)
-            self.env.venv.guide_prob = alpha
+            # prev_alpha = self.env.venv.guide_prob
+            # if len(self.guiding_init_nnstates) == 0 or avg_rew < self.env.venv.guide_rew or self.train_type == "normal" : alpha = 0
+            # else: alpha = tune_alpha(self.guiding_init_nnstates, self.env.venv.normal_init_nnstates)
+            # self.env.venv.alpha
+            if self.num_timesteps > self.guide_start_tstep and self.num_timesteps <= self.guide_end_tstep: 
+                self.env.venv.guide_prob = self.guide_prob
+            elif self.num_timesteps > self.guide_end_tstep: 
+                self.env.venv.guide_prob = 0
+
             self.env.venv.locked = False
             self.all_nstates_by_test.append(copy.copy(self.env.venv.normal_init_nnstates))
             self.env.venv.normal_init_nnstates.clear()
-            if cur_guiding_states: self.env.venv.all_guiding_states.append(cur_guiding_states)
+            self.env.venv.all_guiding_states.extend(cur_guiding_hi_lvl_states)
         else:
-            prev_alpha = self.env.guide_prob
-            if len(self.guiding_init_nnstates) == 0 or avg_rew < self.env.guide_rew or self.train_type == "normal" : alpha = 0
-            else: alpha = tune_alpha(self.guiding_init_nnstates, self.env.normal_init_nnstates)
-            self.env.guide_prob = alpha
+            # prev_alpha = self.env.guide_prob
+            # if len(self.guiding_init_nnstates) == 0 or avg_rew < self.env.guide_rew or self.train_type == "normal" : alpha = 0
+            # else: alpha = tune_alpha(self.guiding_init_nnstates, self.env.normal_init_nnstates, threshold=0.7)
+            # self.env.guide_prob = alpha
+            if self.num_timesteps > self.guide_start_tstep and self.num_timesteps <= self.guide_end_tstep: 
+                self.env.guide_prob = self.guide_prob
+            elif self.num_timesteps > self.guide_end_tstep: 
+                self.env.guide_prob = 0
+
             self.env.locked = False
             self.all_nstates_by_test.append(copy.copy(self.env.normal_init_nnstates))
             self.env.normal_init_nnstates.clear()
-            if cur_guiding_states: self.env.all_guiding_states.append(cur_guiding_states)
+            self.env.all_guiding_states.extend(cur_guiding_hi_lvl_states)
 
+        self.all_gstates_by_test.append(cur_guiding_nn_states)
+        
         num_tot_bugs = num_rlx_bugs + num_unrlx_bugs
 
         info_f = open(self.log_dir + "/info.log", "a")
         data_f = open(self.log_dir + "/bug_rew.log", "a")
 
-        data_f.write("%d;%d;%f;%f;%s;%s\n" % (self.num_timesteps, num_tot_bugs, avg_rew, prev_alpha, str(rlx_bug_idx), str(unrlx_bug_idx)))
-        info_f.write("Current agent has %d(%d) + %d(%d) = %d(%d) bugs and %f reward at %d timesteps. Guide prob. was %f.\n" % (num_rlx_bugs, rlx_fp, num_unrlx_bugs, unrlx_fp, num_tot_bugs, rlx_fp+unrlx_fp, avg_rew, self.num_timesteps, prev_alpha))
+        data_f.write("%d;%d;%f;%f;%s;%s\n" % (self.num_timesteps, num_tot_bugs, avg_rew, self.env.guide_prob, str(rlx_bug_idx), str(unrlx_bug_idx)))
+        info_f.write("Current agent has %d(%d) + %d(%d) = %d(%d) bugs and %f reward at %d timesteps. Guide prob. was %f.\n" % (num_rlx_bugs, rlx_fp, num_unrlx_bugs, unrlx_fp, num_tot_bugs, rlx_fp+unrlx_fp, avg_rew, self.num_timesteps, self.env.guide_prob))
         info_f.close()
         data_f.close()
 
+        # We save the following in every test with the same name, so the file contains the most recent information.
+        ct_f = open(self.log_dir + "/case_track.p", "wb")
+        pickle.dump(self.case_track, ct_f)
+        s_f = open(self.log_dir + "/solved_hard_states.p", "wb")
+        pickle.dump(self.solved, s_f)
 
     def post_train(self):
+
+        # below is not needed to be saved in policy. actually without self.game = None, it is not saveable.
+        self.game = None
+        self.pool = None
 
         if self.env_iden == "car_racing":
             self.all_nstates_by_test.append(copy.copy(self.env.venv.normal_init_nnstates))
